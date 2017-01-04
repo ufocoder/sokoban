@@ -28,10 +28,18 @@ toRotateDegree direction =
 layout: Attribute msg
 layout = style
   [
-    ("position", "absolute"),
+    ("position", "relative")
+  ]
+
+background: Attribute msg
+background = style
+  [
+    ("position", "fixed"),
     ("background-color", "#242c2d"),
     ("width", "100%"),
-    ("height", "100%")
+    ("top", "0"),
+    ("bottom", "0"),
+    ("z-index", "-1")
   ]
 
 menu: Attribute msg
@@ -52,8 +60,7 @@ title: Attribute msg
 title = style
   [
     ("position", "relative"),
-    ("top", "0px"),
-    ("color", "#bac4c5"),
+    ("color", "#efefef"),
     ("font-family", "'Orbitron', sans-serif"),
     ("font-size", "40px"),
     ("line-heigth", "40px"),
@@ -65,12 +72,12 @@ statistic: Attribute msg
 statistic =
   style [
     ("position", "relative"),
-    ("top", "0px"),
     ("color", "#bac4c5"),
     ("font-family", "'Orbitron', sans-serif"),
     ("font-size", "16px"),
     ("line-heigth", "16px"),
     ("text-align", "center"),
+    ("margin-bottom", "40px"),
     ("width", "100%")
   ]
 
@@ -80,7 +87,7 @@ grid height width = style
     ("position", "relative"),
     ("height", toPixels (height * squareSize)),
     ("width", toPixels (width * squareSize)),
-    ("margin", "auto 0")
+    ("margin", "0 auto")
   ]
 
 

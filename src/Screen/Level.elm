@@ -20,7 +20,8 @@ render model =
           Render.layer Wall level.map.wall,
           Render.layer Box level.map.boxes,
           Render.layer Target level.map.target
-        ]
+        ],
+        Render.background
       ]
 
     Nothing -> 

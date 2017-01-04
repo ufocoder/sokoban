@@ -11,6 +11,11 @@ layout children =
   Html.div [Style.layout] children
 
 
+background: Html msg
+background =
+  Html.div [Style.background] []
+
+
 menu: String -> Html msg
 menu message =
   Html.div [Style.menu] [text message]
