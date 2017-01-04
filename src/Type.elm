@@ -4,6 +4,7 @@ import Keyboard exposing (KeyCode)
 
 type Key
     = Space
+    | Esc
     | ArrowUp
     | ArrowDown
     | ArrowLeft
@@ -89,6 +90,7 @@ type Msg
 fromKeyCodeToKey: Int -> Maybe Key
 fromKeyCodeToKey keyCode =
   case keyCode of
+    27 -> Just Esc
     32 -> Just Space
     37 -> Just ArrowLeft
     39 -> Just ArrowRight

@@ -52,6 +52,11 @@ share level message =
     ]
 
 
+reset: String -> Html msg
+reset message =
+  Html.div [Style.reset] [text message]
+
+
 grid: Size -> List (Html msg) -> Html msg
 grid size children =
     Html.div [Style.grid size.heigth size.width] children

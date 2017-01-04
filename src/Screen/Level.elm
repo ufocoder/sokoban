@@ -21,6 +21,7 @@ render model =
           Render.layer Box level.map.boxes,
           Render.layer Target level.map.target
         ],
+        Render.reset "Press ESC to reset the current level",
         Render.background
       ]
 
@@ -36,48 +37,53 @@ update msg model =
     Just level ->
       case msg of
         KeyDown keyCode ->
-          case fromKeyCodeToDirection keyCode of
-            Just direction ->
-              let
-                movementMap = extractMovementMap level.map
-                nextPosition = move level.player.position direction
-                nextPositionAfter = move nextPosition direction
-                nextPositionHasBox = hasPosition level.map.boxes nextPosition
-                canBoxBeMoved = hasPosition movementMap nextPositionAfter
-                canPlayerBeMoved = hasPosition movementMap nextPosition
-              in
-                if nextPositionHasBox && canBoxBeMoved then
-                  let 
-                    newModel = {
-                      model | level = 
-                        level
-                          |> movePlayer direction nextPosition
-                          |> moveBox direction nextPosition
-                          |> Just
-                    }
-                  in
-                    if levelComplete newModel.level then
-                      if (level.number + 1) >= List.length levels then 
-                        ({model | 
-                            screen = ScreenVictory,
-                            level = Nothing
-                          }, Cmd.none)
-                      else
-                        ({newModel | screen = ScreenComplete}, Cmd.none)
-                    else
-                      (newModel, Cmd.none)
-                else if canPlayerBeMoved then
-                  ({
-                    model | level = 
-                      level
-                        |> movePlayer direction nextPosition
-                        |> Just
-                    }, Cmd.none)
-                else 
-                  (model, Cmd.none)
+          case fromKeyCodeToKey keyCode of
+            Just Esc ->
+              ({model | level = playLevel level.number}, Cmd.none)
 
-            _ -> 
-              (model, Cmd.none)
+            _ ->
+              case fromKeyCodeToDirection keyCode of
+                Just direction ->
+                  let
+                    movementMap = extractMovementMap level.map
+                    nextPosition = move level.player.position direction
+                    nextPositionAfter = move nextPosition direction
+                    nextPositionHasBox = hasPosition level.map.boxes nextPosition
+                    canBoxBeMoved = hasPosition movementMap nextPositionAfter
+                    canPlayerBeMoved = hasPosition movementMap nextPosition
+                  in
+                    if nextPositionHasBox && canBoxBeMoved then
+                      let 
+                        newModel = {
+                          model | level = 
+                            level
+                              |> movePlayer direction nextPosition
+                              |> moveBox direction nextPosition
+                              |> Just
+                        }
+                      in
+                        if levelComplete newModel.level then
+                          if (level.number + 1) >= List.length levels then 
+                            ({model | 
+                                screen = ScreenVictory,
+                                level = Nothing
+                              }, Cmd.none)
+                          else
+                            ({newModel | screen = ScreenComplete}, Cmd.none)
+                        else
+                          (newModel, Cmd.none)
+                    else if canPlayerBeMoved then
+                      ({
+                        model | level = 
+                          level
+                            |> movePlayer direction nextPosition
+                            |> Just
+                        }, Cmd.none)
+                    else 
+                      (model, Cmd.none)
+
+                Nothing -> 
+                  (model, Cmd.none)
 
     Nothing -> 
       (model, Cmd.none)

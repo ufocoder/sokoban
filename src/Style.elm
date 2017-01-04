@@ -94,6 +94,20 @@ statistic =
     ("width", "100%")
   ]
 
+
+reset: Attribute msg
+reset = style
+  [
+    ("position", "relative"),
+    ("color", "#efefef"),
+    ("font-family", "'Orbitron', sans-serif"),
+    ("font-size", "14px"),
+    ("text-align", "center"),
+    ("margin-top", "40px"),
+    ("width", "100%")
+  ]
+
+
 grid: Int -> Int -> Attribute msg
 grid height width = style
   [
