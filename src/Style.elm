@@ -51,7 +51,20 @@ menu = style
     ("font-family", "'Orbitron', sans-serif"),
     ("font-size", "25px"),
     ("margin-top", "-25px"),
-    ("line-heigth", "50px"),
+    ("line-height", "50px"),
+    ("text-align", "center"),
+    ("width", "100%")
+  ]
+
+share: Attribute msg
+share = style
+  [
+    ("position", "absolute"),
+    ("top", "290px"),
+    ("color", "#949494"),
+    ("font-family", "'Orbitron', sans-serif"),
+    ("font-size", "14px"),
+    ("line-height", "22px"),
     ("text-align", "center"),
     ("width", "100%")
   ]
@@ -63,7 +76,7 @@ title = style
     ("color", "#efefef"),
     ("font-family", "'Orbitron', sans-serif"),
     ("font-size", "40px"),
-    ("line-heigth", "40px"),
+    ("line-height", "40px"),
     ("text-align", "center"),
     ("width", "100%")
   ]

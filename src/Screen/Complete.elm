@@ -13,9 +13,8 @@ render model =
   case model.level of
     Just level ->
       Render.layout [
-        Render.title ("Level " ++ (toString (level.number + 1)) ++ " complete"),
-        Render.statistic level.statistic,
         Render.menu "Press spacebar to play next level",
+        Render.share level "Share your results in Twitter",
         Render.background
       ]
 

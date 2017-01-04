@@ -2,6 +2,7 @@ module Render exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Http exposing (encodeUri)
 import Style
 import Type exposing (..)
 
@@ -24,6 +25,31 @@ menu message =
 title: String -> Html msg
 title message =
     Html.div [Style.title] [text message]
+
+
+share:  Level -> String -> Html msg
+share level message = 
+  let
+    baseText = (
+      "passed level #" ++ (toString level.number) ++ ", with " ++ 
+      (toString level.statistic.moves) ++ " moves and " ++
+      (toString level.statistic.pushes) ++ " pushes"
+    )
+    shareText = "You " ++ baseText
+    tweetText = "I " ++ baseText
+  in
+    Html.div [Style.share] [
+      Html.div [] [text shareText],
+      Html.a [
+        target "_blank",
+        href ("https://twitter.com/intent/tweet?text=" ++ (encodeUri tweetText)),
+        style [
+          ("color", "#FFFFFF")
+        ]
+      ] [
+        text message
+      ]
+    ]
 
 
 grid: Size -> List (Html msg) -> Html msg
