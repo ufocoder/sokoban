@@ -8,39 +8,64 @@ levels: List Level
 levels =
   let
     b = Box
+    x = BoxOnTarget
     f = Floor
     t = Target
     s = Start
+    y = StartOnTarget
     w = Wall
     v = Void
   in
     generateLevels [
       -- level #1
       [ 
-        [v, v, w, w, w, v, v],
-        [v, v, w, t, w, v, v],
-        [w, w, w, b, w, w, w],
-        [w, t, b, s, b, t, w],
-        [w, w, w, b, w, w, w],
-        [v, v, w, t, w, v, v],
-        [v, v, w, w, w, v, v]
+        [w, w, w, w],
+        [w, f, t, w],
+        [w, f, f, w, w, w],
+        [w, x, s, f, f, w],
+        [w, f, f, b, f, w],
+        [w, f, f, w, w, w],
+        [w, w, w, w]
       ],
       -- level #2
       [ 
-        [v, v, v, v, w, w, w, w, w],
-        [v, v, v, v, w, f, f, f, w],
-        [v, v, v, v, w, b, f, f, w],
-        [v, v, w, w, w, f, f, b, w, w],
-        [v, v, w, f, f, b, f, b, f, w],
-        [w, w, w, f, w, f, w, w, f, w, v, v, v, w, w, w, w, w, w],
-        [w, f, f, f, w, f, w, w, f, w, w, w, w, w, f, f, t, t, w],
-        [w, f, b, f, f, b, f, f, f, f, f, s, f, f, f, f, t, t, w],
-        [w, w, w, w, w, f, w, w, w, f, w, f, w, w, f, f, t, t, w],
-        [v, v, v, v, w, f, f, f, f, f, w, w, w, w, w, w, w, w, w],
-        [v, v, v, v, w, w, w, w, w, w, w]
+        [w, w, w, w, w, w],
+        [w, f, f, f, f, w],
+        [w, f, w, b, f, w],
+        [w, f, s, x, f, w],
+        [w, f, t, x, f, w],
+        [w, f, f, f, f, w],
+        [w, w, w, w, w, w]
+      ],
+      -- level #3
+      [
+        [v, v, w, w, w, w],
+        [w, w, w, f, f, w, w, w, w],
+        [w, f, f, f, f, f, b, f, w],
+        [w, f, w, f, f, w, b, f, w],
+        [w, f, t, f, t, w, s, f, w],
+        [w, w, w, w, w, w, w, w, w]
+      ],
+      -- level #4
+      [
+        [w, w, w, w, w, w, w, w],
+        [w, f, f, f, f, f, f, w],
+        [w, f, t, x, x, b, s, w],
+        [w, f, f, f, f, f, f, w],
+        [w, w, w, w, w, f, f, w],
+        [v, v, v, v, w, w, w, w]
+      ],
+      -- level #5
+      [
+        [v, w, w, w, w, w, w, w],
+        [v, w, f, f, f, f, f, w],
+        [v, w, f, t, b, t, f, w],
+        [w, w, f, b, s, b, f, w],
+        [w, f, f, t, b, t, f, w],
+        [w, f, f, f, f, f, f, w],
+        [w, w, w, w, w, w, w, w]
       ]
-    ] 
-
+    ]
 
 generateLevels: List LevelData -> List Level
 generateLevels levelsData =
@@ -57,10 +82,10 @@ generateLevel levelNumber levelData =
     {
       number = levelNumber,
       map = {
-        boxes =  extractPositions positionsTuples [Box],
-        target = extractPositions positionsTuples [Target],
+        boxes =  extractPositions positionsTuples [Box, BoxOnTarget],
+        target = extractPositions positionsTuples [Target, BoxOnTarget, StartOnTarget],
         wall = extractPositions positionsTuples [Wall],
-        floor = extractPositions positionsTuples [Box, Floor, Target, Start]
+        floor = extractPositions positionsTuples [Box, BoxOnTarget, Floor, Target, Start, StartOnTarget]
       },
       size = {
         heigth = getLevelHeigth levelData,
@@ -116,7 +141,7 @@ extractPlayerPosition positionTuples =
   let
     startPositions = 
       positionTuples
-        |> List.filter (\(x, y, class) -> class == Start)
+        |> List.filter (\(x, y, class) -> class == Start || class == StartOnTarget)
         |> List.map (\(x, y, class) -> {x = x, y = y})
   in
     case List.head startPositions of
