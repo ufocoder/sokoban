@@ -8743,6 +8743,367 @@ var _elm_lang$html$Html_Attributes$classList = function (list) {
 };
 var _elm_lang$html$Html_Attributes$style = _elm_lang$virtual_dom$VirtualDom$style;
 
+var _elm_lang$http$Native_Http = function() {
+
+
+// ENCODING AND DECODING
+
+function encodeUri(string)
+{
+	return encodeURIComponent(string);
+}
+
+function decodeUri(string)
+{
+	try
+	{
+		return _elm_lang$core$Maybe$Just(decodeURIComponent(string));
+	}
+	catch(e)
+	{
+		return _elm_lang$core$Maybe$Nothing;
+	}
+}
+
+
+// SEND REQUEST
+
+function toTask(request, maybeProgress)
+{
+	return _elm_lang$core$Native_Scheduler.nativeBinding(function(callback)
+	{
+		var xhr = new XMLHttpRequest();
+
+		configureProgress(xhr, maybeProgress);
+
+		xhr.addEventListener('error', function() {
+			callback(_elm_lang$core$Native_Scheduler.fail({ ctor: 'NetworkError' }));
+		});
+		xhr.addEventListener('timeout', function() {
+			callback(_elm_lang$core$Native_Scheduler.fail({ ctor: 'Timeout' }));
+		});
+		xhr.addEventListener('load', function() {
+			callback(handleResponse(xhr, request.expect.responseToResult));
+		});
+
+		try
+		{
+			xhr.open(request.method, request.url, true);
+		}
+		catch (e)
+		{
+			return callback(_elm_lang$core$Native_Scheduler.fail({ ctor: 'BadUrl', _0: request.url }));
+		}
+
+		configureRequest(xhr, request);
+		send(xhr, request.body);
+
+		return function() { xhr.abort(); };
+	});
+}
+
+function configureProgress(xhr, maybeProgress)
+{
+	if (maybeProgress.ctor === 'Nothing')
+	{
+		return;
+	}
+
+	xhr.addEventListener('progress', function(event) {
+		if (!event.lengthComputable)
+		{
+			return;
+		}
+		_elm_lang$core$Native_Scheduler.rawSpawn(maybeProgress._0({
+			bytes: event.loaded,
+			bytesExpected: event.total
+		}));
+	});
+}
+
+function configureRequest(xhr, request)
+{
+	function setHeader(pair)
+	{
+		xhr.setRequestHeader(pair._0, pair._1);
+	}
+
+	A2(_elm_lang$core$List$map, setHeader, request.headers);
+	xhr.responseType = request.expect.responseType;
+	xhr.withCredentials = request.withCredentials;
+
+	if (request.timeout.ctor === 'Just')
+	{
+		xhr.timeout = request.timeout._0;
+	}
+}
+
+function send(xhr, body)
+{
+	switch (body.ctor)
+	{
+		case 'EmptyBody':
+			xhr.send();
+			return;
+
+		case 'StringBody':
+			xhr.setRequestHeader('Content-Type', body._0);
+			xhr.send(body._1);
+			return;
+
+		case 'FormDataBody':
+			xhr.send(body._0);
+			return;
+	}
+}
+
+
+// RESPONSES
+
+function handleResponse(xhr, responseToResult)
+{
+	var response = toResponse(xhr);
+
+	if (xhr.status < 200 || 300 <= xhr.status)
+	{
+		response.body = xhr.responseText;
+		return _elm_lang$core$Native_Scheduler.fail({
+			ctor: 'BadStatus',
+			_0: response
+		});
+	}
+
+	var result = responseToResult(response);
+
+	if (result.ctor === 'Ok')
+	{
+		return _elm_lang$core$Native_Scheduler.succeed(result._0);
+	}
+	else
+	{
+		response.body = xhr.responseText;
+		return _elm_lang$core$Native_Scheduler.fail({
+			ctor: 'BadPayload',
+			_0: result._0,
+			_1: response
+		});
+	}
+}
+
+function toResponse(xhr)
+{
+	return {
+		status: { code: xhr.status, message: xhr.statusText },
+		headers: parseHeaders(xhr.getAllResponseHeaders()),
+		url: xhr.responseURL,
+		body: xhr.response
+	};
+}
+
+function parseHeaders(rawHeaders)
+{
+	var headers = _elm_lang$core$Dict$empty;
+
+	if (!rawHeaders)
+	{
+		return headers;
+	}
+
+	var headerPairs = rawHeaders.split('\u000d\u000a');
+	for (var i = headerPairs.length; i--; )
+	{
+		var headerPair = headerPairs[i];
+		var index = headerPair.indexOf('\u003a\u0020');
+		if (index > 0)
+		{
+			var key = headerPair.substring(0, index);
+			var value = headerPair.substring(index + 2);
+
+			headers = A3(_elm_lang$core$Dict$update, key, function(oldValue) {
+				if (oldValue.ctor === 'Just')
+				{
+					return _elm_lang$core$Maybe$Just(value + ', ' + oldValue._0);
+				}
+				return _elm_lang$core$Maybe$Just(value);
+			}, headers);
+		}
+	}
+
+	return headers;
+}
+
+
+// EXPECTORS
+
+function expectStringResponse(responseToResult)
+{
+	return {
+		responseType: 'text',
+		responseToResult: responseToResult
+	};
+}
+
+function mapExpect(func, expect)
+{
+	return {
+		responseType: expect.responseType,
+		responseToResult: function(response) {
+			var convertedResponse = expect.responseToResult(response);
+			return A2(_elm_lang$core$Result$map, func, convertedResponse);
+		}
+	};
+}
+
+
+// BODY
+
+function multipart(parts)
+{
+	var formData = new FormData();
+
+	while (parts.ctor !== '[]')
+	{
+		var part = parts._0;
+		formData.append(part._0, part._1);
+		parts = parts._1;
+	}
+
+	return { ctor: 'FormDataBody', _0: formData };
+}
+
+return {
+	toTask: F2(toTask),
+	expectStringResponse: expectStringResponse,
+	mapExpect: F2(mapExpect),
+	multipart: multipart,
+	encodeUri: encodeUri,
+	decodeUri: decodeUri
+};
+
+}();
+
+var _elm_lang$http$Http_Internal$map = F2(
+	function (func, request) {
+		return _elm_lang$core$Native_Utils.update(
+			request,
+			{
+				expect: A2(_elm_lang$http$Native_Http.mapExpect, func, request.expect)
+			});
+	});
+var _elm_lang$http$Http_Internal$RawRequest = F7(
+	function (a, b, c, d, e, f, g) {
+		return {method: a, headers: b, url: c, body: d, expect: e, timeout: f, withCredentials: g};
+	});
+var _elm_lang$http$Http_Internal$Request = function (a) {
+	return {ctor: 'Request', _0: a};
+};
+var _elm_lang$http$Http_Internal$Expect = {ctor: 'Expect'};
+var _elm_lang$http$Http_Internal$FormDataBody = {ctor: 'FormDataBody'};
+var _elm_lang$http$Http_Internal$StringBody = F2(
+	function (a, b) {
+		return {ctor: 'StringBody', _0: a, _1: b};
+	});
+var _elm_lang$http$Http_Internal$EmptyBody = {ctor: 'EmptyBody'};
+var _elm_lang$http$Http_Internal$Header = F2(
+	function (a, b) {
+		return {ctor: 'Header', _0: a, _1: b};
+	});
+
+var _elm_lang$http$Http$decodeUri = _elm_lang$http$Native_Http.decodeUri;
+var _elm_lang$http$Http$encodeUri = _elm_lang$http$Native_Http.encodeUri;
+var _elm_lang$http$Http$expectStringResponse = _elm_lang$http$Native_Http.expectStringResponse;
+var _elm_lang$http$Http$expectJson = function (decoder) {
+	return _elm_lang$http$Http$expectStringResponse(
+		function (response) {
+			return A2(_elm_lang$core$Json_Decode$decodeString, decoder, response.body);
+		});
+};
+var _elm_lang$http$Http$expectString = _elm_lang$http$Http$expectStringResponse(
+	function (response) {
+		return _elm_lang$core$Result$Ok(response.body);
+	});
+var _elm_lang$http$Http$multipartBody = _elm_lang$http$Native_Http.multipart;
+var _elm_lang$http$Http$stringBody = _elm_lang$http$Http_Internal$StringBody;
+var _elm_lang$http$Http$jsonBody = function (value) {
+	return A2(
+		_elm_lang$http$Http_Internal$StringBody,
+		'application/json',
+		A2(_elm_lang$core$Json_Encode$encode, 0, value));
+};
+var _elm_lang$http$Http$emptyBody = _elm_lang$http$Http_Internal$EmptyBody;
+var _elm_lang$http$Http$header = _elm_lang$http$Http_Internal$Header;
+var _elm_lang$http$Http$request = _elm_lang$http$Http_Internal$Request;
+var _elm_lang$http$Http$post = F3(
+	function (url, body, decoder) {
+		return _elm_lang$http$Http$request(
+			{
+				method: 'POST',
+				headers: {ctor: '[]'},
+				url: url,
+				body: body,
+				expect: _elm_lang$http$Http$expectJson(decoder),
+				timeout: _elm_lang$core$Maybe$Nothing,
+				withCredentials: false
+			});
+	});
+var _elm_lang$http$Http$get = F2(
+	function (url, decoder) {
+		return _elm_lang$http$Http$request(
+			{
+				method: 'GET',
+				headers: {ctor: '[]'},
+				url: url,
+				body: _elm_lang$http$Http$emptyBody,
+				expect: _elm_lang$http$Http$expectJson(decoder),
+				timeout: _elm_lang$core$Maybe$Nothing,
+				withCredentials: false
+			});
+	});
+var _elm_lang$http$Http$getString = function (url) {
+	return _elm_lang$http$Http$request(
+		{
+			method: 'GET',
+			headers: {ctor: '[]'},
+			url: url,
+			body: _elm_lang$http$Http$emptyBody,
+			expect: _elm_lang$http$Http$expectString,
+			timeout: _elm_lang$core$Maybe$Nothing,
+			withCredentials: false
+		});
+};
+var _elm_lang$http$Http$toTask = function (_p0) {
+	var _p1 = _p0;
+	return A2(_elm_lang$http$Native_Http.toTask, _p1._0, _elm_lang$core$Maybe$Nothing);
+};
+var _elm_lang$http$Http$send = F2(
+	function (resultToMessage, request) {
+		return A2(
+			_elm_lang$core$Task$attempt,
+			resultToMessage,
+			_elm_lang$http$Http$toTask(request));
+	});
+var _elm_lang$http$Http$Response = F4(
+	function (a, b, c, d) {
+		return {url: a, status: b, headers: c, body: d};
+	});
+var _elm_lang$http$Http$BadPayload = F2(
+	function (a, b) {
+		return {ctor: 'BadPayload', _0: a, _1: b};
+	});
+var _elm_lang$http$Http$BadStatus = function (a) {
+	return {ctor: 'BadStatus', _0: a};
+};
+var _elm_lang$http$Http$NetworkError = {ctor: 'NetworkError'};
+var _elm_lang$http$Http$Timeout = {ctor: 'Timeout'};
+var _elm_lang$http$Http$BadUrl = function (a) {
+	return {ctor: 'BadUrl', _0: a};
+};
+var _elm_lang$http$Http$StringPart = F2(
+	function (a, b) {
+		return {ctor: 'StringPart', _0: a, _1: b};
+	});
+var _elm_lang$http$Http$stringPart = _elm_lang$http$Http$StringPart;
+
 var _elm_lang$keyboard$Keyboard$onSelfMsg = F3(
 	function (router, _p0, state) {
 		var _p1 = _p0;
@@ -8912,96 +9273,99 @@ var _elm_lang$keyboard$Keyboard$subMap = F2(
 	});
 _elm_lang$core$Native_Platform.effectManagers['Keyboard'] = {pkg: 'elm-lang/keyboard', init: _elm_lang$keyboard$Keyboard$init, onEffects: _elm_lang$keyboard$Keyboard$onEffects, onSelfMsg: _elm_lang$keyboard$Keyboard$onSelfMsg, tag: 'sub', subMap: _elm_lang$keyboard$Keyboard$subMap};
 
-var _user$project$Type$Position = F2(
+var _ufocoder$sokoban$Type$Position = F2(
 	function (a, b) {
 		return {x: a, y: b};
 	});
-var _user$project$Type$Square = F2(
+var _ufocoder$sokoban$Type$Square = F2(
 	function (a, b) {
 		return {position: a, $class: b};
 	});
-var _user$project$Type$Player = F2(
+var _ufocoder$sokoban$Type$Player = F2(
 	function (a, b) {
 		return {direction: a, position: b};
 	});
-var _user$project$Type$Size = F2(
+var _ufocoder$sokoban$Type$Size = F2(
 	function (a, b) {
 		return {heigth: a, width: b};
 	});
-var _user$project$Type$Map = F4(
+var _ufocoder$sokoban$Type$Map = F4(
 	function (a, b, c, d) {
 		return {boxes: a, target: b, wall: c, floor: d};
 	});
-var _user$project$Type$Statistic = F2(
+var _ufocoder$sokoban$Type$Statistic = F2(
 	function (a, b) {
 		return {moves: a, pushes: b};
 	});
-var _user$project$Type$Level = F5(
+var _ufocoder$sokoban$Type$Level = F5(
 	function (a, b, c, d, e) {
 		return {number: a, size: b, map: c, player: d, statistic: e};
 	});
-var _user$project$Type$Model = F2(
+var _ufocoder$sokoban$Type$Model = F2(
 	function (a, b) {
 		return {screen: a, level: b};
 	});
-var _user$project$Type$ArrowRight = {ctor: 'ArrowRight'};
-var _user$project$Type$ArrowLeft = {ctor: 'ArrowLeft'};
-var _user$project$Type$ArrowDown = {ctor: 'ArrowDown'};
-var _user$project$Type$ArrowUp = {ctor: 'ArrowUp'};
-var _user$project$Type$Space = {ctor: 'Space'};
-var _user$project$Type$fromKeyCodeToKey = function (keyCode) {
+var _ufocoder$sokoban$Type$ArrowRight = {ctor: 'ArrowRight'};
+var _ufocoder$sokoban$Type$ArrowLeft = {ctor: 'ArrowLeft'};
+var _ufocoder$sokoban$Type$ArrowDown = {ctor: 'ArrowDown'};
+var _ufocoder$sokoban$Type$ArrowUp = {ctor: 'ArrowUp'};
+var _ufocoder$sokoban$Type$Esc = {ctor: 'Esc'};
+var _ufocoder$sokoban$Type$Space = {ctor: 'Space'};
+var _ufocoder$sokoban$Type$fromKeyCodeToKey = function (keyCode) {
 	var _p0 = keyCode;
 	switch (_p0) {
+		case 27:
+			return _elm_lang$core$Maybe$Just(_ufocoder$sokoban$Type$Esc);
 		case 32:
-			return _elm_lang$core$Maybe$Just(_user$project$Type$Space);
+			return _elm_lang$core$Maybe$Just(_ufocoder$sokoban$Type$Space);
 		case 37:
-			return _elm_lang$core$Maybe$Just(_user$project$Type$ArrowLeft);
+			return _elm_lang$core$Maybe$Just(_ufocoder$sokoban$Type$ArrowLeft);
 		case 39:
-			return _elm_lang$core$Maybe$Just(_user$project$Type$ArrowRight);
+			return _elm_lang$core$Maybe$Just(_ufocoder$sokoban$Type$ArrowRight);
 		case 38:
-			return _elm_lang$core$Maybe$Just(_user$project$Type$ArrowUp);
+			return _elm_lang$core$Maybe$Just(_ufocoder$sokoban$Type$ArrowUp);
 		case 40:
-			return _elm_lang$core$Maybe$Just(_user$project$Type$ArrowDown);
+			return _elm_lang$core$Maybe$Just(_ufocoder$sokoban$Type$ArrowDown);
 		default:
 			return _elm_lang$core$Maybe$Nothing;
 	}
 };
-var _user$project$Type$Right = {ctor: 'Right'};
-var _user$project$Type$Left = {ctor: 'Left'};
-var _user$project$Type$Down = {ctor: 'Down'};
-var _user$project$Type$Up = {ctor: 'Up'};
-var _user$project$Type$fromKeyCodeToDirection = function (keyCode) {
+var _ufocoder$sokoban$Type$Right = {ctor: 'Right'};
+var _ufocoder$sokoban$Type$Left = {ctor: 'Left'};
+var _ufocoder$sokoban$Type$Down = {ctor: 'Down'};
+var _ufocoder$sokoban$Type$Up = {ctor: 'Up'};
+var _ufocoder$sokoban$Type$fromKeyCodeToDirection = function (keyCode) {
 	var _p1 = keyCode;
 	switch (_p1) {
 		case 37:
-			return _elm_lang$core$Maybe$Just(_user$project$Type$Left);
+			return _elm_lang$core$Maybe$Just(_ufocoder$sokoban$Type$Left);
 		case 38:
-			return _elm_lang$core$Maybe$Just(_user$project$Type$Up);
+			return _elm_lang$core$Maybe$Just(_ufocoder$sokoban$Type$Up);
 		case 39:
-			return _elm_lang$core$Maybe$Just(_user$project$Type$Right);
+			return _elm_lang$core$Maybe$Just(_ufocoder$sokoban$Type$Right);
 		case 40:
-			return _elm_lang$core$Maybe$Just(_user$project$Type$Down);
+			return _elm_lang$core$Maybe$Just(_ufocoder$sokoban$Type$Down);
 		default:
 			return _elm_lang$core$Maybe$Nothing;
 	}
 };
-var _user$project$Type$Void = {ctor: 'Void'};
-var _user$project$Type$Wall = {ctor: 'Wall'};
-var _user$project$Type$StartOnTarget = {ctor: 'StartOnTarget'};
-var _user$project$Type$Start = {ctor: 'Start'};
-var _user$project$Type$Target = {ctor: 'Target'};
-var _user$project$Type$Floor = {ctor: 'Floor'};
-var _user$project$Type$BoxOnTarget = {ctor: 'BoxOnTarget'};
-var _user$project$Type$Box = {ctor: 'Box'};
-var _user$project$Type$ScreenVictory = {ctor: 'ScreenVictory'};
-var _user$project$Type$ScreenComplete = {ctor: 'ScreenComplete'};
-var _user$project$Type$ScreenLevel = {ctor: 'ScreenLevel'};
-var _user$project$Type$ScreenIntro = {ctor: 'ScreenIntro'};
-var _user$project$Type$KeyDown = function (a) {
+var _ufocoder$sokoban$Type$Void = {ctor: 'Void'};
+var _ufocoder$sokoban$Type$Wall = {ctor: 'Wall'};
+var _ufocoder$sokoban$Type$StartOnTarget = {ctor: 'StartOnTarget'};
+var _ufocoder$sokoban$Type$Start = {ctor: 'Start'};
+var _ufocoder$sokoban$Type$Target = {ctor: 'Target'};
+var _ufocoder$sokoban$Type$Floor = {ctor: 'Floor'};
+var _ufocoder$sokoban$Type$BoxOnTarget = {ctor: 'BoxOnTarget'};
+var _ufocoder$sokoban$Type$Box = {ctor: 'Box'};
+var _ufocoder$sokoban$Type$ScreenVictory = {ctor: 'ScreenVictory'};
+var _ufocoder$sokoban$Type$ScreenComplete = {ctor: 'ScreenComplete'};
+var _ufocoder$sokoban$Type$ScreenLevel = {ctor: 'ScreenLevel'};
+var _ufocoder$sokoban$Type$ScreenIntro = {ctor: 'ScreenIntro'};
+var _ufocoder$sokoban$Type$KeyDown = function (a) {
 	return {ctor: 'KeyDown', _0: a};
 };
 
-var _user$project$Data$extractPlayerPosition = function (positionTuples) {
+var _ufocoder$sokoban$Data$extractPlayerPosition = function (positionTuples) {
 	var startPositions = A2(
 		_elm_lang$core$List$map,
 		function (_p0) {
@@ -9013,7 +9377,7 @@ var _user$project$Data$extractPlayerPosition = function (positionTuples) {
 			function (_p2) {
 				var _p3 = _p2;
 				var _p4 = _p3._2;
-				return _elm_lang$core$Native_Utils.eq(_p4, _user$project$Type$Start) || _elm_lang$core$Native_Utils.eq(_p4, _user$project$Type$StartOnTarget);
+				return _elm_lang$core$Native_Utils.eq(_p4, _ufocoder$sokoban$Type$Start) || _elm_lang$core$Native_Utils.eq(_p4, _ufocoder$sokoban$Type$StartOnTarget);
 			},
 			positionTuples));
 	var _p5 = _elm_lang$core$List$head(startPositions);
@@ -9023,7 +9387,7 @@ var _user$project$Data$extractPlayerPosition = function (positionTuples) {
 		return {x: 0, y: 0};
 	}
 };
-var _user$project$Data$extractPositions = F2(
+var _ufocoder$sokoban$Data$extractPositions = F2(
 	function (positionTuples, classList) {
 		return A2(
 			_elm_lang$core$List$map,
@@ -9039,7 +9403,7 @@ var _user$project$Data$extractPositions = F2(
 				},
 				positionTuples));
 	});
-var _user$project$Data$transformRow = function (_p10) {
+var _ufocoder$sokoban$Data$transformRow = function (_p10) {
 	var _p11 = _p10;
 	return A2(
 		_elm_lang$core$List$map,
@@ -9049,11 +9413,11 @@ var _user$project$Data$transformRow = function (_p10) {
 		},
 		_p11._1);
 };
-var _user$project$Data$extractPositionTuples = function (levelData) {
+var _ufocoder$sokoban$Data$extractPositionTuples = function (levelData) {
 	return _elm_lang$core$List$concat(
 		A2(
 			_elm_lang$core$List$map,
-			_user$project$Data$transformRow,
+			_ufocoder$sokoban$Data$transformRow,
 			A2(
 				_elm_lang$core$List$indexedMap,
 				F2(
@@ -9073,7 +9437,7 @@ var _user$project$Data$extractPositionTuples = function (levelData) {
 					},
 					levelData))));
 };
-var _user$project$Data$getLevelWidth = function (levelData) {
+var _ufocoder$sokoban$Data$getLevelWidth = function (levelData) {
 	return A2(
 		_elm_lang$core$Maybe$withDefault,
 		0,
@@ -9085,72 +9449,72 @@ var _user$project$Data$getLevelWidth = function (levelData) {
 				},
 				levelData)));
 };
-var _user$project$Data$getLevelHeigth = function (levelData) {
+var _ufocoder$sokoban$Data$getLevelHeigth = function (levelData) {
 	return _elm_lang$core$List$length(levelData);
 };
-var _user$project$Data$generateLevel = F2(
+var _ufocoder$sokoban$Data$generateLevel = F2(
 	function (levelNumber, levelData) {
-		var positionsTuples = _user$project$Data$extractPositionTuples(levelData);
+		var positionsTuples = _ufocoder$sokoban$Data$extractPositionTuples(levelData);
 		return {
 			number: levelNumber,
 			map: {
 				boxes: A2(
-					_user$project$Data$extractPositions,
+					_ufocoder$sokoban$Data$extractPositions,
 					positionsTuples,
 					{
 						ctor: '::',
-						_0: _user$project$Type$Box,
+						_0: _ufocoder$sokoban$Type$Box,
 						_1: {
 							ctor: '::',
-							_0: _user$project$Type$BoxOnTarget,
+							_0: _ufocoder$sokoban$Type$BoxOnTarget,
 							_1: {ctor: '[]'}
 						}
 					}),
 				target: A2(
-					_user$project$Data$extractPositions,
+					_ufocoder$sokoban$Data$extractPositions,
 					positionsTuples,
 					{
 						ctor: '::',
-						_0: _user$project$Type$Target,
+						_0: _ufocoder$sokoban$Type$Target,
 						_1: {
 							ctor: '::',
-							_0: _user$project$Type$BoxOnTarget,
+							_0: _ufocoder$sokoban$Type$BoxOnTarget,
 							_1: {
 								ctor: '::',
-								_0: _user$project$Type$StartOnTarget,
+								_0: _ufocoder$sokoban$Type$StartOnTarget,
 								_1: {ctor: '[]'}
 							}
 						}
 					}),
 				wall: A2(
-					_user$project$Data$extractPositions,
+					_ufocoder$sokoban$Data$extractPositions,
 					positionsTuples,
 					{
 						ctor: '::',
-						_0: _user$project$Type$Wall,
+						_0: _ufocoder$sokoban$Type$Wall,
 						_1: {ctor: '[]'}
 					}),
 				floor: A2(
-					_user$project$Data$extractPositions,
+					_ufocoder$sokoban$Data$extractPositions,
 					positionsTuples,
 					{
 						ctor: '::',
-						_0: _user$project$Type$Box,
+						_0: _ufocoder$sokoban$Type$Box,
 						_1: {
 							ctor: '::',
-							_0: _user$project$Type$BoxOnTarget,
+							_0: _ufocoder$sokoban$Type$BoxOnTarget,
 							_1: {
 								ctor: '::',
-								_0: _user$project$Type$Floor,
+								_0: _ufocoder$sokoban$Type$Floor,
 								_1: {
 									ctor: '::',
-									_0: _user$project$Type$Target,
+									_0: _ufocoder$sokoban$Type$Target,
 									_1: {
 										ctor: '::',
-										_0: _user$project$Type$Start,
+										_0: _ufocoder$sokoban$Type$Start,
 										_1: {
 											ctor: '::',
-											_0: _user$project$Type$StartOnTarget,
+											_0: _ufocoder$sokoban$Type$StartOnTarget,
 											_1: {ctor: '[]'}
 										}
 									}
@@ -9160,22 +9524,22 @@ var _user$project$Data$generateLevel = F2(
 					})
 			},
 			size: {
-				heigth: _user$project$Data$getLevelHeigth(levelData),
-				width: _user$project$Data$getLevelWidth(levelData)
+				heigth: _ufocoder$sokoban$Data$getLevelHeigth(levelData),
+				width: _ufocoder$sokoban$Data$getLevelWidth(levelData)
 			},
 			player: {
-				direction: _user$project$Type$Left,
-				position: _user$project$Data$extractPlayerPosition(positionsTuples)
+				direction: _ufocoder$sokoban$Type$Left,
+				position: _ufocoder$sokoban$Data$extractPlayerPosition(positionsTuples)
 			},
 			statistic: {moves: 0, pushes: 0}
 		};
 	});
-var _user$project$Data$generateLevels = function (levelsData) {
+var _ufocoder$sokoban$Data$generateLevels = function (levelsData) {
 	return A2(
 		_elm_lang$core$List$map,
 		function (_p14) {
 			var _p15 = _p14;
-			return A2(_user$project$Data$generateLevel, _p15._0, _p15._1);
+			return A2(_ufocoder$sokoban$Data$generateLevel, _p15._0, _p15._1);
 		},
 		A2(
 			_elm_lang$core$List$indexedMap,
@@ -9185,16 +9549,16 @@ var _user$project$Data$generateLevels = function (levelsData) {
 				}),
 			levelsData));
 };
-var _user$project$Data$levels = function () {
-	var v = _user$project$Type$Void;
-	var w = _user$project$Type$Wall;
-	var y = _user$project$Type$StartOnTarget;
-	var s = _user$project$Type$Start;
-	var t = _user$project$Type$Target;
-	var f = _user$project$Type$Floor;
-	var x = _user$project$Type$BoxOnTarget;
-	var b = _user$project$Type$Box;
-	return _user$project$Data$generateLevels(
+var _ufocoder$sokoban$Data$levels = function () {
+	var v = _ufocoder$sokoban$Type$Void;
+	var w = _ufocoder$sokoban$Type$Wall;
+	var y = _ufocoder$sokoban$Type$StartOnTarget;
+	var s = _ufocoder$sokoban$Type$Start;
+	var t = _ufocoder$sokoban$Type$Target;
+	var f = _ufocoder$sokoban$Type$Floor;
+	var x = _ufocoder$sokoban$Type$BoxOnTarget;
+	var b = _ufocoder$sokoban$Type$Box;
+	return _ufocoder$sokoban$Data$generateLevels(
 		{
 			ctor: '::',
 			_0: {
@@ -10282,7 +10646,7 @@ var _user$project$Data$levels = function () {
 		});
 }();
 
-var _user$project$Game$move = F2(
+var _ufocoder$sokoban$Game$move = F2(
 	function (position, direction) {
 		var _p0 = direction;
 		switch (_p0.ctor) {
@@ -10304,14 +10668,14 @@ var _user$project$Game$move = F2(
 					{x: position.x + 1});
 		}
 	});
-var _user$project$Game$moveBox = F3(
+var _ufocoder$sokoban$Game$moveBox = F3(
 	function (direction, position, level) {
 		var levelStatistic = level.statistic;
 		var levelMap = level.map;
 		var mapBoxes = A2(
 			_elm_lang$core$List$map,
 			function (square) {
-				return (_elm_lang$core$Native_Utils.eq(square.x, position.x) && _elm_lang$core$Native_Utils.eq(square.y, position.y)) ? A2(_user$project$Game$move, square, direction) : square;
+				return (_elm_lang$core$Native_Utils.eq(square.x, position.x) && _elm_lang$core$Native_Utils.eq(square.y, position.y)) ? A2(_ufocoder$sokoban$Game$move, square, direction) : square;
 			},
 			levelMap.boxes);
 		return _elm_lang$core$Native_Utils.update(
@@ -10325,7 +10689,7 @@ var _user$project$Game$moveBox = F3(
 					{boxes: mapBoxes})
 			});
 	});
-var _user$project$Game$movePlayer = F3(
+var _ufocoder$sokoban$Game$movePlayer = F3(
 	function (direction, position, level) {
 		var levelStatistic = level.statistic;
 		var gamePlayer = level.player;
@@ -10340,7 +10704,7 @@ var _user$project$Game$movePlayer = F3(
 					{position: position, direction: direction})
 			});
 	});
-var _user$project$Game$levelComplete = function (level) {
+var _ufocoder$sokoban$Game$levelComplete = function (level) {
 	var _p1 = level;
 	if (_p1.ctor === 'Just') {
 		var _p2 = _p1._0;
@@ -10360,7 +10724,7 @@ var _user$project$Game$levelComplete = function (level) {
 		return false;
 	}
 };
-var _user$project$Game$hasPosition = F2(
+var _ufocoder$sokoban$Game$hasPosition = F2(
 	function (layer, position) {
 		return !_elm_lang$core$List$isEmpty(
 			A2(
@@ -10370,7 +10734,7 @@ var _user$project$Game$hasPosition = F2(
 				},
 				layer));
 	});
-var _user$project$Game$extractMovementMap = function (map) {
+var _ufocoder$sokoban$Game$extractMovementMap = function (map) {
 	return A2(
 		_elm_lang$core$List$filter,
 		function (floor) {
@@ -10378,14 +10742,14 @@ var _user$project$Game$extractMovementMap = function (map) {
 		},
 		map.floor);
 };
-var _user$project$Game$playLevel = function (levelNumber) {
+var _ufocoder$sokoban$Game$playLevel = function (levelNumber) {
 	return A2(
 		_elm_lang$core$Array$get,
 		levelNumber,
-		_elm_lang$core$Array$fromList(_user$project$Data$levels));
+		_elm_lang$core$Array$fromList(_ufocoder$sokoban$Data$levels));
 };
 
-var _user$project$Style$layer = function (zIndex) {
+var _ufocoder$sokoban$Style$layer = function (zIndex) {
 	return _elm_lang$html$Html_Attributes$style(
 		{
 			ctor: '::',
@@ -10401,7 +10765,37 @@ var _user$project$Style$layer = function (zIndex) {
 			}
 		});
 };
-var _user$project$Style$statistic = _elm_lang$html$Html_Attributes$style(
+var _ufocoder$sokoban$Style$reset = _elm_lang$html$Html_Attributes$style(
+	{
+		ctor: '::',
+		_0: {ctor: '_Tuple2', _0: 'position', _1: 'relative'},
+		_1: {
+			ctor: '::',
+			_0: {ctor: '_Tuple2', _0: 'color', _1: '#efefef'},
+			_1: {
+				ctor: '::',
+				_0: {ctor: '_Tuple2', _0: 'font-family', _1: '\'Orbitron\', sans-serif'},
+				_1: {
+					ctor: '::',
+					_0: {ctor: '_Tuple2', _0: 'font-size', _1: '14px'},
+					_1: {
+						ctor: '::',
+						_0: {ctor: '_Tuple2', _0: 'text-align', _1: 'center'},
+						_1: {
+							ctor: '::',
+							_0: {ctor: '_Tuple2', _0: 'margin-top', _1: '40px'},
+							_1: {
+								ctor: '::',
+								_0: {ctor: '_Tuple2', _0: 'width', _1: '100%'},
+								_1: {ctor: '[]'}
+							}
+						}
+					}
+				}
+			}
+		}
+	});
+var _ufocoder$sokoban$Style$statistic = _elm_lang$html$Html_Attributes$style(
 	{
 		ctor: '::',
 		_0: {ctor: '_Tuple2', _0: 'position', _1: 'relative'},
@@ -10435,7 +10829,7 @@ var _user$project$Style$statistic = _elm_lang$html$Html_Attributes$style(
 			}
 		}
 	});
-var _user$project$Style$title = _elm_lang$html$Html_Attributes$style(
+var _ufocoder$sokoban$Style$title = _elm_lang$html$Html_Attributes$style(
 	{
 		ctor: '::',
 		_0: {ctor: '_Tuple2', _0: 'position', _1: 'relative'},
@@ -10450,7 +10844,7 @@ var _user$project$Style$title = _elm_lang$html$Html_Attributes$style(
 					_0: {ctor: '_Tuple2', _0: 'font-size', _1: '40px'},
 					_1: {
 						ctor: '::',
-						_0: {ctor: '_Tuple2', _0: 'line-heigth', _1: '40px'},
+						_0: {ctor: '_Tuple2', _0: 'line-height', _1: '40px'},
 						_1: {
 							ctor: '::',
 							_0: {ctor: '_Tuple2', _0: 'text-align', _1: 'center'},
@@ -10465,7 +10859,41 @@ var _user$project$Style$title = _elm_lang$html$Html_Attributes$style(
 			}
 		}
 	});
-var _user$project$Style$menu = _elm_lang$html$Html_Attributes$style(
+var _ufocoder$sokoban$Style$share = _elm_lang$html$Html_Attributes$style(
+	{
+		ctor: '::',
+		_0: {ctor: '_Tuple2', _0: 'position', _1: 'absolute'},
+		_1: {
+			ctor: '::',
+			_0: {ctor: '_Tuple2', _0: 'top', _1: '290px'},
+			_1: {
+				ctor: '::',
+				_0: {ctor: '_Tuple2', _0: 'color', _1: '#949494'},
+				_1: {
+					ctor: '::',
+					_0: {ctor: '_Tuple2', _0: 'font-family', _1: '\'Orbitron\', sans-serif'},
+					_1: {
+						ctor: '::',
+						_0: {ctor: '_Tuple2', _0: 'font-size', _1: '14px'},
+						_1: {
+							ctor: '::',
+							_0: {ctor: '_Tuple2', _0: 'line-height', _1: '22px'},
+							_1: {
+								ctor: '::',
+								_0: {ctor: '_Tuple2', _0: 'text-align', _1: 'center'},
+								_1: {
+									ctor: '::',
+									_0: {ctor: '_Tuple2', _0: 'width', _1: '100%'},
+									_1: {ctor: '[]'}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	});
+var _ufocoder$sokoban$Style$menu = _elm_lang$html$Html_Attributes$style(
 	{
 		ctor: '::',
 		_0: {ctor: '_Tuple2', _0: 'position', _1: 'absolute'},
@@ -10486,7 +10914,7 @@ var _user$project$Style$menu = _elm_lang$html$Html_Attributes$style(
 							_0: {ctor: '_Tuple2', _0: 'margin-top', _1: '-25px'},
 							_1: {
 								ctor: '::',
-								_0: {ctor: '_Tuple2', _0: 'line-heigth', _1: '50px'},
+								_0: {ctor: '_Tuple2', _0: 'line-height', _1: '50px'},
 								_1: {
 									ctor: '::',
 									_0: {ctor: '_Tuple2', _0: 'text-align', _1: 'center'},
@@ -10503,7 +10931,7 @@ var _user$project$Style$menu = _elm_lang$html$Html_Attributes$style(
 			}
 		}
 	});
-var _user$project$Style$background = _elm_lang$html$Html_Attributes$style(
+var _ufocoder$sokoban$Style$background = _elm_lang$html$Html_Attributes$style(
 	{
 		ctor: '::',
 		_0: {ctor: '_Tuple2', _0: 'position', _1: 'fixed'},
@@ -10529,13 +10957,13 @@ var _user$project$Style$background = _elm_lang$html$Html_Attributes$style(
 			}
 		}
 	});
-var _user$project$Style$layout = _elm_lang$html$Html_Attributes$style(
+var _ufocoder$sokoban$Style$layout = _elm_lang$html$Html_Attributes$style(
 	{
 		ctor: '::',
 		_0: {ctor: '_Tuple2', _0: 'position', _1: 'relative'},
 		_1: {ctor: '[]'}
 	});
-var _user$project$Style$toRotateDegree = function (direction) {
+var _ufocoder$sokoban$Style$toRotateDegree = function (direction) {
 	var _p0 = direction;
 	switch (_p0.ctor) {
 		case 'Up':
@@ -10572,14 +11000,14 @@ var _user$project$Style$toRotateDegree = function (direction) {
 					'deg)'));
 	}
 };
-var _user$project$Style$toPixels = function (size) {
+var _ufocoder$sokoban$Style$toPixels = function (size) {
 	return A2(
 		_elm_lang$core$Basics_ops['++'],
 		_elm_lang$core$Basics$toString(size),
 		'px');
 };
-var _user$project$Style$squareSize = 32;
-var _user$project$Style$grid = F2(
+var _ufocoder$sokoban$Style$squareSize = 32;
+var _ufocoder$sokoban$Style$grid = F2(
 	function (height, width) {
 		return _elm_lang$html$Html_Attributes$style(
 			{
@@ -10590,14 +11018,14 @@ var _user$project$Style$grid = F2(
 					_0: {
 						ctor: '_Tuple2',
 						_0: 'height',
-						_1: _user$project$Style$toPixels(height * _user$project$Style$squareSize)
+						_1: _ufocoder$sokoban$Style$toPixels(height * _ufocoder$sokoban$Style$squareSize)
 					},
 					_1: {
 						ctor: '::',
 						_0: {
 							ctor: '_Tuple2',
 							_0: 'width',
-							_1: _user$project$Style$toPixels(width * _user$project$Style$squareSize)
+							_1: _ufocoder$sokoban$Style$toPixels(width * _ufocoder$sokoban$Style$squareSize)
 						},
 						_1: {
 							ctor: '::',
@@ -10608,7 +11036,7 @@ var _user$project$Style$grid = F2(
 				}
 			});
 	});
-var _user$project$Style$baseSquare = function (position) {
+var _ufocoder$sokoban$Style$baseSquare = function (position) {
 	return {
 		ctor: '::',
 		_0: {ctor: '_Tuple2', _0: 'position', _1: 'absolute'},
@@ -10617,28 +11045,28 @@ var _user$project$Style$baseSquare = function (position) {
 			_0: {
 				ctor: '_Tuple2',
 				_0: 'height',
-				_1: _user$project$Style$toPixels(_user$project$Style$squareSize)
+				_1: _ufocoder$sokoban$Style$toPixels(_ufocoder$sokoban$Style$squareSize)
 			},
 			_1: {
 				ctor: '::',
 				_0: {
 					ctor: '_Tuple2',
 					_0: 'width',
-					_1: _user$project$Style$toPixels(_user$project$Style$squareSize)
+					_1: _ufocoder$sokoban$Style$toPixels(_ufocoder$sokoban$Style$squareSize)
 				},
 				_1: {
 					ctor: '::',
 					_0: {
 						ctor: '_Tuple2',
 						_0: 'left',
-						_1: _user$project$Style$toPixels(_user$project$Style$squareSize * position.x)
+						_1: _ufocoder$sokoban$Style$toPixels(_ufocoder$sokoban$Style$squareSize * position.x)
 					},
 					_1: {
 						ctor: '::',
 						_0: {
 							ctor: '_Tuple2',
 							_0: 'top',
-							_1: _user$project$Style$toPixels(_user$project$Style$squareSize * position.y)
+							_1: _ufocoder$sokoban$Style$toPixels(_ufocoder$sokoban$Style$squareSize * position.y)
 						},
 						_1: {ctor: '[]'}
 					}
@@ -10647,12 +11075,12 @@ var _user$project$Style$baseSquare = function (position) {
 		}
 	};
 };
-var _user$project$Style$player = F2(
+var _ufocoder$sokoban$Style$player = F2(
 	function (position, direction) {
 		return _elm_lang$html$Html_Attributes$style(
 			A2(
 				_elm_lang$core$List$append,
-				_user$project$Style$baseSquare(position),
+				_ufocoder$sokoban$Style$baseSquare(position),
 				{
 					ctor: '::',
 					_0: {ctor: '_Tuple2', _0: 'background-image', _1: 'url(\'../dist/assets/player.png\')'},
@@ -10670,35 +11098,35 @@ var _user$project$Style$player = F2(
 									_0: {
 										ctor: '_Tuple2',
 										_0: '-webkit-transform',
-										_1: _user$project$Style$toRotateDegree(direction)
+										_1: _ufocoder$sokoban$Style$toRotateDegree(direction)
 									},
 									_1: {
 										ctor: '::',
 										_0: {
 											ctor: '_Tuple2',
 											_0: '-moz-transform',
-											_1: _user$project$Style$toRotateDegree(direction)
+											_1: _ufocoder$sokoban$Style$toRotateDegree(direction)
 										},
 										_1: {
 											ctor: '::',
 											_0: {
 												ctor: '_Tuple2',
 												_0: '-ms-transform',
-												_1: _user$project$Style$toRotateDegree(direction)
+												_1: _ufocoder$sokoban$Style$toRotateDegree(direction)
 											},
 											_1: {
 												ctor: '::',
 												_0: {
 													ctor: '_Tuple2',
 													_0: '-o-transform',
-													_1: _user$project$Style$toRotateDegree(direction)
+													_1: _ufocoder$sokoban$Style$toRotateDegree(direction)
 												},
 												_1: {
 													ctor: '::',
 													_0: {
 														ctor: '_Tuple2',
 														_0: 'transform',
-														_1: _user$project$Style$toRotateDegree(direction)
+														_1: _ufocoder$sokoban$Style$toRotateDegree(direction)
 													},
 													_1: {ctor: '[]'}
 												}
@@ -10711,11 +11139,11 @@ var _user$project$Style$player = F2(
 					}
 				}));
 	});
-var _user$project$Style$target = function (position) {
+var _ufocoder$sokoban$Style$target = function (position) {
 	return _elm_lang$html$Html_Attributes$style(
 		A2(
 			_elm_lang$core$List$append,
-			_user$project$Style$baseSquare(position),
+			_ufocoder$sokoban$Style$baseSquare(position),
 			{
 				ctor: '::',
 				_0: {ctor: '_Tuple2', _0: 'background-image', _1: 'url(\'../dist/assets/target.png\')'},
@@ -10726,11 +11154,11 @@ var _user$project$Style$target = function (position) {
 				}
 			}));
 };
-var _user$project$Style$box = function (position) {
+var _ufocoder$sokoban$Style$box = function (position) {
 	return _elm_lang$html$Html_Attributes$style(
 		A2(
 			_elm_lang$core$List$append,
-			_user$project$Style$baseSquare(position),
+			_ufocoder$sokoban$Style$baseSquare(position),
 			{
 				ctor: '::',
 				_0: {ctor: '_Tuple2', _0: 'background-image', _1: 'url(\'../dist/assets/box.png\')'},
@@ -10757,11 +11185,11 @@ var _user$project$Style$box = function (position) {
 				}
 			}));
 };
-var _user$project$Style$floor = function (position) {
+var _ufocoder$sokoban$Style$floor = function (position) {
 	return _elm_lang$html$Html_Attributes$style(
 		A2(
 			_elm_lang$core$List$append,
-			_user$project$Style$baseSquare(position),
+			_ufocoder$sokoban$Style$baseSquare(position),
 			{
 				ctor: '::',
 				_0: {ctor: '_Tuple2', _0: 'background-color', _1: '#6c7a7c'},
@@ -10776,11 +11204,11 @@ var _user$project$Style$floor = function (position) {
 				}
 			}));
 };
-var _user$project$Style$wall = function (position) {
+var _ufocoder$sokoban$Style$wall = function (position) {
 	return _elm_lang$html$Html_Attributes$style(
 		A2(
 			_elm_lang$core$List$append,
-			_user$project$Style$baseSquare(position),
+			_ufocoder$sokoban$Style$baseSquare(position),
 			{
 				ctor: '::',
 				_0: {ctor: '_Tuple2', _0: 'background-color', _1: '#161c1d'},
@@ -10808,7 +11236,7 @@ var _user$project$Style$wall = function (position) {
 			}));
 };
 
-var _user$project$Render$square = F2(
+var _ufocoder$sokoban$Render$square = F2(
 	function ($class, position) {
 		var _p0 = $class;
 		switch (_p0.ctor) {
@@ -10817,7 +11245,7 @@ var _user$project$Render$square = F2(
 					_elm_lang$html$Html$div,
 					{
 						ctor: '::',
-						_0: _user$project$Style$box(position),
+						_0: _ufocoder$sokoban$Style$box(position),
 						_1: {ctor: '[]'}
 					},
 					{ctor: '[]'});
@@ -10826,7 +11254,7 @@ var _user$project$Render$square = F2(
 					_elm_lang$html$Html$div,
 					{
 						ctor: '::',
-						_0: _user$project$Style$wall(position),
+						_0: _ufocoder$sokoban$Style$wall(position),
 						_1: {ctor: '[]'}
 					},
 					{ctor: '[]'});
@@ -10835,7 +11263,7 @@ var _user$project$Render$square = F2(
 					_elm_lang$html$Html$div,
 					{
 						ctor: '::',
-						_0: _user$project$Style$target(position),
+						_0: _ufocoder$sokoban$Style$target(position),
 						_1: {ctor: '[]'}
 					},
 					{ctor: '[]'});
@@ -10844,7 +11272,7 @@ var _user$project$Render$square = F2(
 					_elm_lang$html$Html$div,
 					{
 						ctor: '::',
-						_0: _user$project$Style$floor(position),
+						_0: _ufocoder$sokoban$Style$floor(position),
 						_1: {ctor: '[]'}
 					},
 					{ctor: '[]'});
@@ -10855,12 +11283,12 @@ var _user$project$Render$square = F2(
 					{ctor: '[]'});
 		}
 	});
-var _user$project$Render$statistic = function (statistic) {
+var _ufocoder$sokoban$Render$statistic = function (statistic) {
 	return A2(
 		_elm_lang$html$Html$div,
 		{
 			ctor: '::',
-			_0: _user$project$Style$statistic,
+			_0: _ufocoder$sokoban$Style$statistic,
 			_1: {ctor: '[]'}
 		},
 		{
@@ -10882,43 +11310,43 @@ var _user$project$Render$statistic = function (statistic) {
 			_1: {ctor: '[]'}
 		});
 };
-var _user$project$Render$player = function (player) {
+var _ufocoder$sokoban$Render$player = function (player) {
 	return A2(
 		_elm_lang$html$Html$div,
 		{
 			ctor: '::',
-			_0: A2(_user$project$Style$player, player.position, player.direction),
+			_0: A2(_ufocoder$sokoban$Style$player, player.position, player.direction),
 			_1: {ctor: '[]'}
 		},
 		{ctor: '[]'});
 };
-var _user$project$Render$layer = F2(
+var _ufocoder$sokoban$Render$layer = F2(
 	function ($class, layer) {
 		return A2(
 			_elm_lang$html$Html$div,
 			{ctor: '[]'},
 			A2(
 				_elm_lang$core$List$map,
-				_user$project$Render$square($class),
+				_ufocoder$sokoban$Render$square($class),
 				layer));
 	});
-var _user$project$Render$grid = F2(
+var _ufocoder$sokoban$Render$grid = F2(
 	function (size, children) {
 		return A2(
 			_elm_lang$html$Html$div,
 			{
 				ctor: '::',
-				_0: A2(_user$project$Style$grid, size.heigth, size.width),
+				_0: A2(_ufocoder$sokoban$Style$grid, size.heigth, size.width),
 				_1: {ctor: '[]'}
 			},
 			children);
 	});
-var _user$project$Render$title = function (message) {
+var _ufocoder$sokoban$Render$reset = function (message) {
 	return A2(
 		_elm_lang$html$Html$div,
 		{
 			ctor: '::',
-			_0: _user$project$Style$title,
+			_0: _ufocoder$sokoban$Style$reset,
 			_1: {ctor: '[]'}
 		},
 		{
@@ -10927,12 +11355,44 @@ var _user$project$Render$title = function (message) {
 			_1: {ctor: '[]'}
 		});
 };
-var _user$project$Render$menu = function (message) {
+var _ufocoder$sokoban$Render$shareTwitterLink = F2(
+	function (linkText, tweetText) {
+		return A2(
+			_elm_lang$html$Html$a,
+			{
+				ctor: '::',
+				_0: _elm_lang$html$Html_Attributes$target('_blank'),
+				_1: {
+					ctor: '::',
+					_0: _elm_lang$html$Html_Attributes$href(
+						A2(
+							_elm_lang$core$Basics_ops['++'],
+							'https://twitter.com/intent/tweet?text=',
+							_elm_lang$http$Http$encodeUri(tweetText))),
+					_1: {
+						ctor: '::',
+						_0: _elm_lang$html$Html_Attributes$style(
+							{
+								ctor: '::',
+								_0: {ctor: '_Tuple2', _0: 'color', _1: '#FFFFFF'},
+								_1: {ctor: '[]'}
+							}),
+						_1: {ctor: '[]'}
+					}
+				}
+			},
+			{
+				ctor: '::',
+				_0: _elm_lang$html$Html$text(linkText),
+				_1: {ctor: '[]'}
+			});
+	});
+var _ufocoder$sokoban$Render$title = function (message) {
 	return A2(
 		_elm_lang$html$Html$div,
 		{
 			ctor: '::',
-			_0: _user$project$Style$menu,
+			_0: _ufocoder$sokoban$Style$title,
 			_1: {ctor: '[]'}
 		},
 		{
@@ -10941,37 +11401,120 @@ var _user$project$Render$menu = function (message) {
 			_1: {ctor: '[]'}
 		});
 };
-var _user$project$Render$background = A2(
+var _ufocoder$sokoban$Render$menu = function (message) {
+	return A2(
+		_elm_lang$html$Html$div,
+		{
+			ctor: '::',
+			_0: _ufocoder$sokoban$Style$menu,
+			_1: {ctor: '[]'}
+		},
+		{
+			ctor: '::',
+			_0: _elm_lang$html$Html$text(message),
+			_1: {ctor: '[]'}
+		});
+};
+var _ufocoder$sokoban$Render$background = A2(
 	_elm_lang$html$Html$div,
 	{
 		ctor: '::',
-		_0: _user$project$Style$background,
+		_0: _ufocoder$sokoban$Style$background,
 		_1: {ctor: '[]'}
 	},
 	{ctor: '[]'});
-var _user$project$Render$layout = function (children) {
+var _ufocoder$sokoban$Render$layout = function (children) {
 	return A2(
 		_elm_lang$html$Html$div,
 		{
 			ctor: '::',
-			_0: _user$project$Style$layout,
+			_0: _ufocoder$sokoban$Style$layout,
 			_1: {ctor: '[]'}
 		},
 		children);
 };
+var _ufocoder$sokoban$Render$url = 'https://ufocoder.github.io/sokoban/dist/index.html';
+var _ufocoder$sokoban$Render$shareVictory = function (linkText) {
+	var tweetText = A2(_elm_lang$core$Basics_ops['++'], 'I win the sokoban game, URL: ', _ufocoder$sokoban$Render$url);
+	return A2(
+		_elm_lang$html$Html$div,
+		{
+			ctor: '::',
+			_0: _ufocoder$sokoban$Style$share,
+			_1: {ctor: '[]'}
+		},
+		{
+			ctor: '::',
+			_0: A2(_ufocoder$sokoban$Render$shareTwitterLink, linkText, tweetText),
+			_1: {ctor: '[]'}
+		});
+};
+var _ufocoder$sokoban$Render$shareLevel = F2(
+	function (level, linkText) {
+		var baseText = A2(
+			_elm_lang$core$Basics_ops['++'],
+			'passed level #',
+			A2(
+				_elm_lang$core$Basics_ops['++'],
+				_elm_lang$core$Basics$toString(level.number + 1),
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					', with ',
+					A2(
+						_elm_lang$core$Basics_ops['++'],
+						_elm_lang$core$Basics$toString(level.statistic.moves),
+						A2(
+							_elm_lang$core$Basics_ops['++'],
+							' moves and ',
+							A2(
+								_elm_lang$core$Basics_ops['++'],
+								_elm_lang$core$Basics$toString(level.statistic.pushes),
+								' pushes'))))));
+		var shareText = A2(_elm_lang$core$Basics_ops['++'], 'You ', baseText);
+		var tweetText = A2(
+			_elm_lang$core$Basics_ops['++'],
+			'I ',
+			A2(
+				_elm_lang$core$Basics_ops['++'],
+				baseText,
+				A2(_elm_lang$core$Basics_ops['++'], ', URL: ', _ufocoder$sokoban$Render$url)));
+		return A2(
+			_elm_lang$html$Html$div,
+			{
+				ctor: '::',
+				_0: _ufocoder$sokoban$Style$share,
+				_1: {ctor: '[]'}
+			},
+			{
+				ctor: '::',
+				_0: A2(
+					_elm_lang$html$Html$div,
+					{ctor: '[]'},
+					{
+						ctor: '::',
+						_0: _elm_lang$html$Html$text(shareText),
+						_1: {ctor: '[]'}
+					}),
+				_1: {
+					ctor: '::',
+					_0: A2(_ufocoder$sokoban$Render$shareTwitterLink, linkText, tweetText),
+					_1: {ctor: '[]'}
+				}
+			});
+	});
 
-var _user$project$Screen_Intro$update = F2(
+var _ufocoder$sokoban$Screen_Intro$update = F2(
 	function (msg, model) {
 		var _p0 = msg;
-		var _p1 = _user$project$Type$fromKeyCodeToKey(_p0._0);
+		var _p1 = _ufocoder$sokoban$Type$fromKeyCodeToKey(_p0._0);
 		if ((_p1.ctor === 'Just') && (_p1._0.ctor === 'Space')) {
 			return {
 				ctor: '_Tuple2',
 				_0: _elm_lang$core$Native_Utils.update(
 					model,
 					{
-						screen: _user$project$Type$ScreenLevel,
-						level: _user$project$Game$playLevel(0)
+						screen: _ufocoder$sokoban$Type$ScreenLevel,
+						level: _ufocoder$sokoban$Game$playLevel(0)
 					}),
 				_1: _elm_lang$core$Platform_Cmd$none
 			};
@@ -10979,118 +11522,132 @@ var _user$project$Screen_Intro$update = F2(
 			return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
 		}
 	});
-var _user$project$Screen_Intro$render = function (model) {
-	return _user$project$Render$layout(
+var _ufocoder$sokoban$Screen_Intro$render = function (model) {
+	return _ufocoder$sokoban$Render$layout(
 		{
 			ctor: '::',
-			_0: _user$project$Render$menu('Press spacebar to start the game'),
+			_0: _ufocoder$sokoban$Render$menu('Press spacebar to start the game'),
 			_1: {
 				ctor: '::',
-				_0: _user$project$Render$background,
+				_0: _ufocoder$sokoban$Render$background,
 				_1: {ctor: '[]'}
 			}
 		});
 };
 
-var _user$project$Screen_Level$update = F2(
+var _ufocoder$sokoban$Screen_Level$update = F2(
 	function (msg, model) {
 		var _p0 = model.level;
 		if (_p0.ctor === 'Just') {
-			var _p4 = _p0._0;
+			var _p6 = _p0._0;
 			var _p1 = msg;
-			var _p2 = _user$project$Type$fromKeyCodeToDirection(_p1._0);
-			if (_p2.ctor === 'Just') {
-				var _p3 = _p2._0;
-				var nextPosition = A2(_user$project$Game$move, _p4.player.position, _p3);
-				var nextPositionAfter = A2(_user$project$Game$move, nextPosition, _p3);
-				var nextPositionHasBox = A2(_user$project$Game$hasPosition, _p4.map.boxes, nextPosition);
-				var movementMap = _user$project$Game$extractMovementMap(_p4.map);
-				var canBoxBeMoved = A2(_user$project$Game$hasPosition, movementMap, nextPositionAfter);
-				var canPlayerBeMoved = A2(_user$project$Game$hasPosition, movementMap, nextPosition);
-				if (nextPositionHasBox && canBoxBeMoved) {
-					var newModel = _elm_lang$core$Native_Utils.update(
+			var _p5 = _p1._0;
+			var _p2 = _ufocoder$sokoban$Type$fromKeyCodeToKey(_p5);
+			if ((_p2.ctor === 'Just') && (_p2._0.ctor === 'Esc')) {
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
 						model,
 						{
-							level: _elm_lang$core$Maybe$Just(
-								A3(
-									_user$project$Game$moveBox,
-									_p3,
-									nextPosition,
-									A3(_user$project$Game$movePlayer, _p3, nextPosition, _p4)))
-						});
-					return _user$project$Game$levelComplete(newModel.level) ? ((_elm_lang$core$Native_Utils.cmp(
-						_p4.number + 1,
-						_elm_lang$core$List$length(_user$project$Data$levels)) > -1) ? {
-						ctor: '_Tuple2',
-						_0: _elm_lang$core$Native_Utils.update(
+							level: _ufocoder$sokoban$Game$playLevel(_p6.number)
+						}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+			} else {
+				var _p3 = _ufocoder$sokoban$Type$fromKeyCodeToDirection(_p5);
+				if (_p3.ctor === 'Just') {
+					var _p4 = _p3._0;
+					var nextPosition = A2(_ufocoder$sokoban$Game$move, _p6.player.position, _p4);
+					var nextPositionAfter = A2(_ufocoder$sokoban$Game$move, nextPosition, _p4);
+					var nextPositionHasBox = A2(_ufocoder$sokoban$Game$hasPosition, _p6.map.boxes, nextPosition);
+					var movementMap = _ufocoder$sokoban$Game$extractMovementMap(_p6.map);
+					var canBoxBeMoved = A2(_ufocoder$sokoban$Game$hasPosition, movementMap, nextPositionAfter);
+					var canPlayerBeMoved = A2(_ufocoder$sokoban$Game$hasPosition, movementMap, nextPosition);
+					if (nextPositionHasBox && canBoxBeMoved) {
+						var newModel = _elm_lang$core$Native_Utils.update(
 							model,
-							{screen: _user$project$Type$ScreenVictory, level: _elm_lang$core$Maybe$Nothing}),
-						_1: _elm_lang$core$Platform_Cmd$none
-					} : {
-						ctor: '_Tuple2',
-						_0: _elm_lang$core$Native_Utils.update(
-							newModel,
-							{screen: _user$project$Type$ScreenComplete}),
-						_1: _elm_lang$core$Platform_Cmd$none
-					}) : {ctor: '_Tuple2', _0: newModel, _1: _elm_lang$core$Platform_Cmd$none};
-				} else {
-					if (canPlayerBeMoved) {
-						return {
+							{
+								level: _elm_lang$core$Maybe$Just(
+									A3(
+										_ufocoder$sokoban$Game$moveBox,
+										_p4,
+										nextPosition,
+										A3(_ufocoder$sokoban$Game$movePlayer, _p4, nextPosition, _p6)))
+							});
+						return _ufocoder$sokoban$Game$levelComplete(newModel.level) ? ((_elm_lang$core$Native_Utils.cmp(
+							_p6.number + 1,
+							_elm_lang$core$List$length(_ufocoder$sokoban$Data$levels)) > -1) ? {
 							ctor: '_Tuple2',
 							_0: _elm_lang$core$Native_Utils.update(
 								model,
-								{
-									level: _elm_lang$core$Maybe$Just(
-										A3(_user$project$Game$movePlayer, _p3, nextPosition, _p4))
-								}),
+								{screen: _ufocoder$sokoban$Type$ScreenVictory, level: _elm_lang$core$Maybe$Nothing}),
 							_1: _elm_lang$core$Platform_Cmd$none
-						};
+						} : {
+							ctor: '_Tuple2',
+							_0: _elm_lang$core$Native_Utils.update(
+								newModel,
+								{screen: _ufocoder$sokoban$Type$ScreenComplete}),
+							_1: _elm_lang$core$Platform_Cmd$none
+						}) : {ctor: '_Tuple2', _0: newModel, _1: _elm_lang$core$Platform_Cmd$none};
 					} else {
-						return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+						if (canPlayerBeMoved) {
+							return {
+								ctor: '_Tuple2',
+								_0: _elm_lang$core$Native_Utils.update(
+									model,
+									{
+										level: _elm_lang$core$Maybe$Just(
+											A3(_ufocoder$sokoban$Game$movePlayer, _p4, nextPosition, _p6))
+									}),
+								_1: _elm_lang$core$Platform_Cmd$none
+							};
+						} else {
+							return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
+						}
 					}
+				} else {
+					return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
 				}
-			} else {
-				return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
 			}
 		} else {
 			return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
 		}
 	});
-var _user$project$Screen_Level$render = function (model) {
-	var _p5 = model.level;
-	if (_p5.ctor === 'Just') {
-		var _p6 = _p5._0;
-		return _user$project$Render$layout(
+var _ufocoder$sokoban$Screen_Level$render = function (model) {
+	var _p7 = model.level;
+	if (_p7.ctor === 'Just') {
+		var _p8 = _p7._0;
+		return _ufocoder$sokoban$Render$layout(
 			{
 				ctor: '::',
-				_0: _user$project$Render$title(
+				_0: _ufocoder$sokoban$Render$title(
 					A2(
 						_elm_lang$core$Basics_ops['++'],
 						'Level ',
-						_elm_lang$core$Basics$toString(_p6.number + 1))),
+						_elm_lang$core$Basics$toString(_p8.number + 1))),
 				_1: {
 					ctor: '::',
-					_0: _user$project$Render$statistic(_p6.statistic),
+					_0: _ufocoder$sokoban$Render$statistic(_p8.statistic),
 					_1: {
 						ctor: '::',
 						_0: A2(
-							_user$project$Render$grid,
-							_p6.size,
+							_ufocoder$sokoban$Render$grid,
+							_p8.size,
 							{
 								ctor: '::',
-								_0: _user$project$Render$player(_p6.player),
+								_0: _ufocoder$sokoban$Render$player(_p8.player),
 								_1: {
 									ctor: '::',
-									_0: A2(_user$project$Render$layer, _user$project$Type$Floor, _p6.map.floor),
+									_0: A2(_ufocoder$sokoban$Render$layer, _ufocoder$sokoban$Type$Floor, _p8.map.floor),
 									_1: {
 										ctor: '::',
-										_0: A2(_user$project$Render$layer, _user$project$Type$Wall, _p6.map.wall),
+										_0: A2(_ufocoder$sokoban$Render$layer, _ufocoder$sokoban$Type$Wall, _p8.map.wall),
 										_1: {
 											ctor: '::',
-											_0: A2(_user$project$Render$layer, _user$project$Type$Box, _p6.map.boxes),
+											_0: A2(_ufocoder$sokoban$Render$layer, _ufocoder$sokoban$Type$Box, _p8.map.boxes),
 											_1: {
 												ctor: '::',
-												_0: A2(_user$project$Render$layer, _user$project$Type$Target, _p6.map.target),
+												_0: A2(_ufocoder$sokoban$Render$layer, _ufocoder$sokoban$Type$Target, _p8.map.target),
 												_1: {ctor: '[]'}
 											}
 										}
@@ -11099,36 +11656,40 @@ var _user$project$Screen_Level$render = function (model) {
 							}),
 						_1: {
 							ctor: '::',
-							_0: _user$project$Render$background,
-							_1: {ctor: '[]'}
+							_0: _ufocoder$sokoban$Render$reset('Press ESC to reset the current level'),
+							_1: {
+								ctor: '::',
+								_0: _ufocoder$sokoban$Render$background,
+								_1: {ctor: '[]'}
+							}
 						}
 					}
 				}
 			});
 	} else {
-		return _user$project$Render$layout(
+		return _ufocoder$sokoban$Render$layout(
 			{
 				ctor: '::',
-				_0: _user$project$Render$title('Bad level'),
+				_0: _ufocoder$sokoban$Render$title('Bad level'),
 				_1: {ctor: '[]'}
 			});
 	}
 };
 
-var _user$project$Screen_Complete$update = F2(
+var _ufocoder$sokoban$Screen_Complete$update = F2(
 	function (msg, model) {
 		var _p0 = model.level;
 		if (_p0.ctor === 'Just') {
 			var _p1 = msg;
-			var _p2 = _user$project$Type$fromKeyCodeToKey(_p1._0);
+			var _p2 = _ufocoder$sokoban$Type$fromKeyCodeToKey(_p1._0);
 			if ((_p2.ctor === 'Just') && (_p2._0.ctor === 'Space')) {
 				return {
 					ctor: '_Tuple2',
 					_0: _elm_lang$core$Native_Utils.update(
 						model,
 						{
-							screen: _user$project$Type$ScreenLevel,
-							level: _user$project$Game$playLevel(_p0._0.number + 1)
+							screen: _ufocoder$sokoban$Type$ScreenLevel,
+							level: _ufocoder$sokoban$Game$playLevel(_p0._0.number + 1)
 						}),
 					_1: _elm_lang$core$Platform_Cmd$none
 				};
@@ -11139,97 +11700,89 @@ var _user$project$Screen_Complete$update = F2(
 			return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
 		}
 	});
-var _user$project$Screen_Complete$render = function (model) {
+var _ufocoder$sokoban$Screen_Complete$render = function (model) {
 	var _p3 = model.level;
 	if (_p3.ctor === 'Just') {
-		var _p4 = _p3._0;
-		return _user$project$Render$layout(
+		return _ufocoder$sokoban$Render$layout(
 			{
 				ctor: '::',
-				_0: _user$project$Render$title(
-					A2(
-						_elm_lang$core$Basics_ops['++'],
-						'Level ',
-						A2(
-							_elm_lang$core$Basics_ops['++'],
-							_elm_lang$core$Basics$toString(_p4.number + 1),
-							' complete'))),
+				_0: _ufocoder$sokoban$Render$menu('Press spacebar to play next level'),
 				_1: {
 					ctor: '::',
-					_0: _user$project$Render$statistic(_p4.statistic),
+					_0: A2(_ufocoder$sokoban$Render$shareLevel, _p3._0, 'Share your results in Twitter'),
 					_1: {
 						ctor: '::',
-						_0: _user$project$Render$menu('Press spacebar to play next level'),
-						_1: {
-							ctor: '::',
-							_0: _user$project$Render$background,
-							_1: {ctor: '[]'}
-						}
+						_0: _ufocoder$sokoban$Render$background,
+						_1: {ctor: '[]'}
 					}
 				}
 			});
 	} else {
-		return _user$project$Render$layout(
+		return _ufocoder$sokoban$Render$layout(
 			{
 				ctor: '::',
-				_0: _user$project$Render$title('Bad level'),
+				_0: _ufocoder$sokoban$Render$title('Bad level'),
 				_1: {ctor: '[]'}
 			});
 	}
 };
 
-var _user$project$Screen_Victory$render = function (model) {
-	return _user$project$Render$layout(
+var _ufocoder$sokoban$Screen_Victory$render = function (model) {
+	return _ufocoder$sokoban$Render$layout(
 		{
 			ctor: '::',
-			_0: _user$project$Render$title('You win!'),
+			_0: _ufocoder$sokoban$Render$menu('Congratulations! You win the game!'),
 			_1: {
 				ctor: '::',
-				_0: _user$project$Render$background,
-				_1: {ctor: '[]'}
+				_0: _ufocoder$sokoban$Render$shareVictory('Share your victory in Twitter'),
+				_1: {
+					ctor: '::',
+					_0: _ufocoder$sokoban$Render$background,
+					_1: {ctor: '[]'}
+				}
 			}
 		});
 };
 
-var _user$project$Main$view = function (model) {
+var _ufocoder$sokoban$Main$view = function (model) {
 	var _p0 = model.screen;
 	switch (_p0.ctor) {
 		case 'ScreenIntro':
-			return _user$project$Screen_Intro$render(model);
+			return _ufocoder$sokoban$Screen_Intro$render(model);
 		case 'ScreenLevel':
-			return _user$project$Screen_Level$render(model);
+			return _ufocoder$sokoban$Screen_Level$render(model);
 		case 'ScreenComplete':
-			return _user$project$Screen_Complete$render(model);
+			return _ufocoder$sokoban$Screen_Complete$render(model);
 		default:
-			return _user$project$Screen_Victory$render(model);
+			return _ufocoder$sokoban$Screen_Victory$render(model);
 	}
 };
-var _user$project$Main$update = F2(
+var _ufocoder$sokoban$Main$update = F2(
 	function (msg, model) {
 		var _p1 = model.screen;
 		switch (_p1.ctor) {
 			case 'ScreenIntro':
-				return A2(_user$project$Screen_Intro$update, msg, model);
+				return A2(_ufocoder$sokoban$Screen_Intro$update, msg, model);
 			case 'ScreenLevel':
-				return A2(_user$project$Screen_Level$update, msg, model);
+				return A2(_ufocoder$sokoban$Screen_Level$update, msg, model);
 			case 'ScreenComplete':
-				return A2(_user$project$Screen_Complete$update, msg, model);
+				return A2(_ufocoder$sokoban$Screen_Complete$update, msg, model);
 			default:
 				return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
 		}
 	});
-var _user$project$Main$subscriptions = function (model) {
-	return _elm_lang$keyboard$Keyboard$downs(_user$project$Type$KeyDown);
+var _ufocoder$sokoban$Main$subscriptions = function (model) {
+	return _elm_lang$keyboard$Keyboard$downs(_ufocoder$sokoban$Type$KeyDown);
 };
-var _user$project$Main$model = {screen: _user$project$Type$ScreenIntro, level: _elm_lang$core$Maybe$Nothing};
-var _user$project$Main$init = {ctor: '_Tuple2', _0: _user$project$Main$model, _1: _elm_lang$core$Platform_Cmd$none};
-var _user$project$Main$main = _elm_lang$html$Html$program(
-	{init: _user$project$Main$init, view: _user$project$Main$view, update: _user$project$Main$update, subscriptions: _user$project$Main$subscriptions})();
+var _ufocoder$sokoban$Main$model = {screen: _ufocoder$sokoban$Type$ScreenIntro, level: _elm_lang$core$Maybe$Nothing};
+var _ufocoder$sokoban$Main$init = {ctor: '_Tuple2', _0: _ufocoder$sokoban$Main$model, _1: _elm_lang$core$Platform_Cmd$none};
+var _ufocoder$sokoban$Main$main = _elm_lang$html$Html$program(
+	{init: _ufocoder$sokoban$Main$init, view: _ufocoder$sokoban$Main$view, update: _ufocoder$sokoban$Main$update, subscriptions: _ufocoder$sokoban$Main$subscriptions})();
 
 var Elm = {};
 Elm['Main'] = Elm['Main'] || {};
-if (typeof _user$project$Main$main !== 'undefined') {
-    _user$project$Main$main(Elm['Main'], 'Main', undefined);
+if (typeof _ufocoder$sokoban$Main$main !== 'undefined') {
+    _ufocoder$sokoban$Main$main(Elm['Main'], 'Main', undefined);
 }
 
 if (typeof define === "function" && define['amd'])
