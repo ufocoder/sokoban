@@ -8932,9 +8932,13 @@ var _user$project$Type$Map = F4(
 	function (a, b, c, d) {
 		return {boxes: a, target: b, wall: c, floor: d};
 	});
-var _user$project$Type$Level = F4(
-	function (a, b, c, d) {
-		return {number: a, size: b, map: c, player: d};
+var _user$project$Type$Statistic = F2(
+	function (a, b) {
+		return {moves: a, pushes: b};
+	});
+var _user$project$Type$Level = F5(
+	function (a, b, c, d, e) {
+		return {number: a, size: b, map: c, player: d, statistic: e};
 	});
 var _user$project$Type$Model = F2(
 	function (a, b) {
@@ -8983,9 +8987,11 @@ var _user$project$Type$fromKeyCodeToDirection = function (keyCode) {
 };
 var _user$project$Type$Void = {ctor: 'Void'};
 var _user$project$Type$Wall = {ctor: 'Wall'};
+var _user$project$Type$StartOnTarget = {ctor: 'StartOnTarget'};
 var _user$project$Type$Start = {ctor: 'Start'};
 var _user$project$Type$Target = {ctor: 'Target'};
 var _user$project$Type$Floor = {ctor: 'Floor'};
+var _user$project$Type$BoxOnTarget = {ctor: 'BoxOnTarget'};
 var _user$project$Type$Box = {ctor: 'Box'};
 var _user$project$Type$ScreenVictory = {ctor: 'ScreenVictory'};
 var _user$project$Type$ScreenComplete = {ctor: 'ScreenComplete'};
@@ -9006,12 +9012,13 @@ var _user$project$Data$extractPlayerPosition = function (positionTuples) {
 			_elm_lang$core$List$filter,
 			function (_p2) {
 				var _p3 = _p2;
-				return _elm_lang$core$Native_Utils.eq(_p3._2, _user$project$Type$Start);
+				var _p4 = _p3._2;
+				return _elm_lang$core$Native_Utils.eq(_p4, _user$project$Type$Start) || _elm_lang$core$Native_Utils.eq(_p4, _user$project$Type$StartOnTarget);
 			},
 			positionTuples));
-	var _p4 = _elm_lang$core$List$head(startPositions);
-	if (_p4.ctor === 'Just') {
-		return _p4._0;
+	var _p5 = _elm_lang$core$List$head(startPositions);
+	if (_p5.ctor === 'Just') {
+		return _p5._0;
 	} else {
 		return {x: 0, y: 0};
 	}
@@ -9020,27 +9027,27 @@ var _user$project$Data$extractPositions = F2(
 	function (positionTuples, classList) {
 		return A2(
 			_elm_lang$core$List$map,
-			function (_p5) {
-				var _p6 = _p5;
-				return {x: _p6._0, y: _p6._1};
+			function (_p6) {
+				var _p7 = _p6;
+				return {x: _p7._0, y: _p7._1};
 			},
 			A2(
 				_elm_lang$core$List$filter,
-				function (_p7) {
-					var _p8 = _p7;
-					return A2(_elm_lang$core$List$member, _p8._2, classList);
+				function (_p8) {
+					var _p9 = _p8;
+					return A2(_elm_lang$core$List$member, _p9._2, classList);
 				},
 				positionTuples));
 	});
-var _user$project$Data$transformRow = function (_p9) {
-	var _p10 = _p9;
+var _user$project$Data$transformRow = function (_p10) {
+	var _p11 = _p10;
 	return A2(
 		_elm_lang$core$List$map,
-		function (_p11) {
-			var _p12 = _p11;
-			return {ctor: '_Tuple3', _0: _p12._0, _1: _p10._0, _2: _p12._1};
+		function (_p12) {
+			var _p13 = _p12;
+			return {ctor: '_Tuple3', _0: _p13._0, _1: _p11._0, _2: _p13._1};
 		},
-		_p10._1);
+		_p11._1);
 };
 var _user$project$Data$extractPositionTuples = function (levelData) {
 	return _elm_lang$core$List$concat(
@@ -9093,7 +9100,11 @@ var _user$project$Data$generateLevel = F2(
 					{
 						ctor: '::',
 						_0: _user$project$Type$Box,
-						_1: {ctor: '[]'}
+						_1: {
+							ctor: '::',
+							_0: _user$project$Type$BoxOnTarget,
+							_1: {ctor: '[]'}
+						}
 					}),
 				target: A2(
 					_user$project$Data$extractPositions,
@@ -9101,7 +9112,15 @@ var _user$project$Data$generateLevel = F2(
 					{
 						ctor: '::',
 						_0: _user$project$Type$Target,
-						_1: {ctor: '[]'}
+						_1: {
+							ctor: '::',
+							_0: _user$project$Type$BoxOnTarget,
+							_1: {
+								ctor: '::',
+								_0: _user$project$Type$StartOnTarget,
+								_1: {ctor: '[]'}
+							}
+						}
 					}),
 				wall: A2(
 					_user$project$Data$extractPositions,
@@ -9119,14 +9138,22 @@ var _user$project$Data$generateLevel = F2(
 						_0: _user$project$Type$Box,
 						_1: {
 							ctor: '::',
-							_0: _user$project$Type$Floor,
+							_0: _user$project$Type$BoxOnTarget,
 							_1: {
 								ctor: '::',
-								_0: _user$project$Type$Target,
+								_0: _user$project$Type$Floor,
 								_1: {
 									ctor: '::',
-									_0: _user$project$Type$Start,
-									_1: {ctor: '[]'}
+									_0: _user$project$Type$Target,
+									_1: {
+										ctor: '::',
+										_0: _user$project$Type$Start,
+										_1: {
+											ctor: '::',
+											_0: _user$project$Type$StartOnTarget,
+											_1: {ctor: '[]'}
+										}
+									}
 								}
 							}
 						}
@@ -9139,15 +9166,16 @@ var _user$project$Data$generateLevel = F2(
 			player: {
 				direction: _user$project$Type$Left,
 				position: _user$project$Data$extractPlayerPosition(positionsTuples)
-			}
+			},
+			statistic: {moves: 0, pushes: 0}
 		};
 	});
 var _user$project$Data$generateLevels = function (levelsData) {
 	return A2(
 		_elm_lang$core$List$map,
-		function (_p13) {
-			var _p14 = _p13;
-			return A2(_user$project$Data$generateLevel, _p14._0, _p14._1);
+		function (_p14) {
+			var _p15 = _p14;
+			return A2(_user$project$Data$generateLevel, _p15._0, _p15._1);
 		},
 		A2(
 			_elm_lang$core$List$indexedMap,
@@ -9160,9 +9188,11 @@ var _user$project$Data$generateLevels = function (levelsData) {
 var _user$project$Data$levels = function () {
 	var v = _user$project$Type$Void;
 	var w = _user$project$Type$Wall;
+	var y = _user$project$Type$StartOnTarget;
 	var s = _user$project$Type$Start;
 	var t = _user$project$Type$Target;
 	var f = _user$project$Type$Floor;
+	var x = _user$project$Type$BoxOnTarget;
 	var b = _user$project$Type$Box;
 	return _user$project$Data$generateLevels(
 		{
@@ -9171,29 +9201,17 @@ var _user$project$Data$levels = function () {
 				ctor: '::',
 				_0: {
 					ctor: '::',
-					_0: v,
+					_0: w,
 					_1: {
 						ctor: '::',
-						_0: v,
+						_0: w,
 						_1: {
 							ctor: '::',
 							_0: w,
 							_1: {
 								ctor: '::',
 								_0: w,
-								_1: {
-									ctor: '::',
-									_0: w,
-									_1: {
-										ctor: '::',
-										_0: v,
-										_1: {
-											ctor: '::',
-											_0: v,
-											_1: {ctor: '[]'}
-										}
-									}
-								}
+								_1: {ctor: '[]'}
 							}
 						}
 					}
@@ -9202,29 +9220,17 @@ var _user$project$Data$levels = function () {
 					ctor: '::',
 					_0: {
 						ctor: '::',
-						_0: v,
+						_0: w,
 						_1: {
 							ctor: '::',
-							_0: v,
+							_0: f,
 							_1: {
 								ctor: '::',
-								_0: w,
+								_0: t,
 								_1: {
 									ctor: '::',
-									_0: t,
-									_1: {
-										ctor: '::',
-										_0: w,
-										_1: {
-											ctor: '::',
-											_0: v,
-											_1: {
-												ctor: '::',
-												_0: v,
-												_1: {ctor: '[]'}
-											}
-										}
-									}
+									_0: w,
+									_1: {ctor: '[]'}
 								}
 							}
 						}
@@ -9236,24 +9242,20 @@ var _user$project$Data$levels = function () {
 							_0: w,
 							_1: {
 								ctor: '::',
-								_0: w,
+								_0: f,
 								_1: {
 									ctor: '::',
-									_0: w,
+									_0: f,
 									_1: {
 										ctor: '::',
-										_0: b,
+										_0: w,
 										_1: {
 											ctor: '::',
 											_0: w,
 											_1: {
 												ctor: '::',
 												_0: w,
-												_1: {
-													ctor: '::',
-													_0: w,
-													_1: {ctor: '[]'}
-												}
+												_1: {ctor: '[]'}
 											}
 										}
 									}
@@ -9267,24 +9269,20 @@ var _user$project$Data$levels = function () {
 								_0: w,
 								_1: {
 									ctor: '::',
-									_0: t,
+									_0: x,
 									_1: {
 										ctor: '::',
-										_0: b,
+										_0: s,
 										_1: {
 											ctor: '::',
-											_0: s,
+											_0: f,
 											_1: {
 												ctor: '::',
-												_0: b,
+												_0: f,
 												_1: {
 													ctor: '::',
-													_0: t,
-													_1: {
-														ctor: '::',
-														_0: w,
-														_1: {ctor: '[]'}
-													}
+													_0: w,
+													_1: {ctor: '[]'}
 												}
 											}
 										}
@@ -9298,13 +9296,37 @@ var _user$project$Data$levels = function () {
 									_0: w,
 									_1: {
 										ctor: '::',
-										_0: w,
+										_0: f,
 										_1: {
 											ctor: '::',
-											_0: w,
+											_0: f,
 											_1: {
 												ctor: '::',
 												_0: b,
+												_1: {
+													ctor: '::',
+													_0: f,
+													_1: {
+														ctor: '::',
+														_0: w,
+														_1: {ctor: '[]'}
+													}
+												}
+											}
+										}
+									}
+								},
+								_1: {
+									ctor: '::',
+									_0: {
+										ctor: '::',
+										_0: w,
+										_1: {
+											ctor: '::',
+											_0: f,
+											_1: {
+												ctor: '::',
+												_0: f,
 												_1: {
 													ctor: '::',
 													_0: w,
@@ -9320,66 +9342,22 @@ var _user$project$Data$levels = function () {
 												}
 											}
 										}
-									}
-								},
-								_1: {
-									ctor: '::',
-									_0: {
-										ctor: '::',
-										_0: v,
-										_1: {
-											ctor: '::',
-											_0: v,
-											_1: {
-												ctor: '::',
-												_0: w,
-												_1: {
-													ctor: '::',
-													_0: t,
-													_1: {
-														ctor: '::',
-														_0: w,
-														_1: {
-															ctor: '::',
-															_0: v,
-															_1: {
-																ctor: '::',
-																_0: v,
-																_1: {ctor: '[]'}
-															}
-														}
-													}
-												}
-											}
-										}
 									},
 									_1: {
 										ctor: '::',
 										_0: {
 											ctor: '::',
-											_0: v,
+											_0: w,
 											_1: {
 												ctor: '::',
-												_0: v,
+												_0: w,
 												_1: {
 													ctor: '::',
 													_0: w,
 													_1: {
 														ctor: '::',
 														_0: w,
-														_1: {
-															ctor: '::',
-															_0: w,
-															_1: {
-																ctor: '::',
-																_0: v,
-																_1: {
-																	ctor: '::',
-																	_0: v,
-																	_1: {ctor: '[]'}
-																}
-															}
-														}
+														_1: {ctor: '[]'}
 													}
 												}
 											}
@@ -9398,35 +9376,23 @@ var _user$project$Data$levels = function () {
 					ctor: '::',
 					_0: {
 						ctor: '::',
-						_0: v,
+						_0: w,
 						_1: {
 							ctor: '::',
-							_0: v,
+							_0: w,
 							_1: {
 								ctor: '::',
-								_0: v,
+								_0: w,
 								_1: {
 									ctor: '::',
-									_0: v,
+									_0: w,
 									_1: {
 										ctor: '::',
 										_0: w,
 										_1: {
 											ctor: '::',
 											_0: w,
-											_1: {
-												ctor: '::',
-												_0: w,
-												_1: {
-													ctor: '::',
-													_0: w,
-													_1: {
-														ctor: '::',
-														_0: w,
-														_1: {ctor: '[]'}
-													}
-												}
-											}
+											_1: {ctor: '[]'}
 										}
 									}
 								}
@@ -9437,17 +9403,113 @@ var _user$project$Data$levels = function () {
 						ctor: '::',
 						_0: {
 							ctor: '::',
-							_0: v,
+							_0: w,
 							_1: {
 								ctor: '::',
-								_0: v,
+								_0: f,
 								_1: {
 									ctor: '::',
-									_0: v,
+									_0: f,
 									_1: {
 										ctor: '::',
-										_0: v,
+										_0: f,
 										_1: {
+											ctor: '::',
+											_0: f,
+											_1: {
+												ctor: '::',
+												_0: w,
+												_1: {ctor: '[]'}
+											}
+										}
+									}
+								}
+							}
+						},
+						_1: {
+							ctor: '::',
+							_0: {
+								ctor: '::',
+								_0: w,
+								_1: {
+									ctor: '::',
+									_0: f,
+									_1: {
+										ctor: '::',
+										_0: w,
+										_1: {
+											ctor: '::',
+											_0: b,
+											_1: {
+												ctor: '::',
+												_0: f,
+												_1: {
+													ctor: '::',
+													_0: w,
+													_1: {ctor: '[]'}
+												}
+											}
+										}
+									}
+								}
+							},
+							_1: {
+								ctor: '::',
+								_0: {
+									ctor: '::',
+									_0: w,
+									_1: {
+										ctor: '::',
+										_0: f,
+										_1: {
+											ctor: '::',
+											_0: s,
+											_1: {
+												ctor: '::',
+												_0: x,
+												_1: {
+													ctor: '::',
+													_0: f,
+													_1: {
+														ctor: '::',
+														_0: w,
+														_1: {ctor: '[]'}
+													}
+												}
+											}
+										}
+									}
+								},
+								_1: {
+									ctor: '::',
+									_0: {
+										ctor: '::',
+										_0: w,
+										_1: {
+											ctor: '::',
+											_0: f,
+											_1: {
+												ctor: '::',
+												_0: t,
+												_1: {
+													ctor: '::',
+													_0: x,
+													_1: {
+														ctor: '::',
+														_0: f,
+														_1: {
+															ctor: '::',
+															_0: w,
+															_1: {ctor: '[]'}
+														}
+													}
+												}
+											}
+										}
+									},
+									_1: {
+										ctor: '::',
+										_0: {
 											ctor: '::',
 											_0: w,
 											_1: {
@@ -9461,11 +9523,75 @@ var _user$project$Data$levels = function () {
 														_0: f,
 														_1: {
 															ctor: '::',
-															_0: w,
-															_1: {ctor: '[]'}
+															_0: f,
+															_1: {
+																ctor: '::',
+																_0: w,
+																_1: {ctor: '[]'}
+															}
 														}
 													}
 												}
+											}
+										},
+										_1: {
+											ctor: '::',
+											_0: {
+												ctor: '::',
+												_0: w,
+												_1: {
+													ctor: '::',
+													_0: w,
+													_1: {
+														ctor: '::',
+														_0: w,
+														_1: {
+															ctor: '::',
+															_0: w,
+															_1: {
+																ctor: '::',
+																_0: w,
+																_1: {
+																	ctor: '::',
+																	_0: w,
+																	_1: {ctor: '[]'}
+																}
+															}
+														}
+													}
+												}
+											},
+											_1: {ctor: '[]'}
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				_1: {
+					ctor: '::',
+					_0: {
+						ctor: '::',
+						_0: {
+							ctor: '::',
+							_0: v,
+							_1: {
+								ctor: '::',
+								_0: v,
+								_1: {
+									ctor: '::',
+									_0: w,
+									_1: {
+										ctor: '::',
+										_0: w,
+										_1: {
+											ctor: '::',
+											_0: w,
+											_1: {
+												ctor: '::',
+												_0: w,
+												_1: {ctor: '[]'}
 											}
 										}
 									}
@@ -9476,28 +9602,28 @@ var _user$project$Data$levels = function () {
 							ctor: '::',
 							_0: {
 								ctor: '::',
-								_0: v,
+								_0: w,
 								_1: {
 									ctor: '::',
-									_0: v,
+									_0: w,
 									_1: {
 										ctor: '::',
-										_0: v,
+										_0: w,
 										_1: {
 											ctor: '::',
-											_0: v,
+											_0: f,
 											_1: {
 												ctor: '::',
-												_0: w,
+												_0: f,
 												_1: {
 													ctor: '::',
-													_0: b,
+													_0: w,
 													_1: {
 														ctor: '::',
-														_0: f,
+														_0: w,
 														_1: {
 															ctor: '::',
-															_0: f,
+															_0: w,
 															_1: {
 																ctor: '::',
 																_0: w,
@@ -9515,56 +9641,16 @@ var _user$project$Data$levels = function () {
 								ctor: '::',
 								_0: {
 									ctor: '::',
-									_0: v,
+									_0: w,
 									_1: {
 										ctor: '::',
-										_0: v,
+										_0: f,
 										_1: {
 											ctor: '::',
-											_0: w,
+											_0: f,
 											_1: {
 												ctor: '::',
-												_0: w,
-												_1: {
-													ctor: '::',
-													_0: w,
-													_1: {
-														ctor: '::',
-														_0: f,
-														_1: {
-															ctor: '::',
-															_0: f,
-															_1: {
-																ctor: '::',
-																_0: b,
-																_1: {
-																	ctor: '::',
-																	_0: w,
-																	_1: {
-																		ctor: '::',
-																		_0: w,
-																		_1: {ctor: '[]'}
-																	}
-																}
-															}
-														}
-													}
-												}
-											}
-										}
-									}
-								},
-								_1: {
-									ctor: '::',
-									_0: {
-										ctor: '::',
-										_0: v,
-										_1: {
-											ctor: '::',
-											_0: v,
-											_1: {
-												ctor: '::',
-												_0: w,
+												_0: f,
 												_1: {
 													ctor: '::',
 													_0: f,
@@ -9579,15 +9665,47 @@ var _user$project$Data$levels = function () {
 																_0: f,
 																_1: {
 																	ctor: '::',
-																	_0: b,
+																	_0: w,
+																	_1: {ctor: '[]'}
+																}
+															}
+														}
+													}
+												}
+											}
+										}
+									}
+								},
+								_1: {
+									ctor: '::',
+									_0: {
+										ctor: '::',
+										_0: w,
+										_1: {
+											ctor: '::',
+											_0: f,
+											_1: {
+												ctor: '::',
+												_0: w,
+												_1: {
+													ctor: '::',
+													_0: f,
+													_1: {
+														ctor: '::',
+														_0: f,
+														_1: {
+															ctor: '::',
+															_0: w,
+															_1: {
+																ctor: '::',
+																_0: b,
+																_1: {
+																	ctor: '::',
+																	_0: f,
 																	_1: {
 																		ctor: '::',
-																		_0: f,
-																		_1: {
-																			ctor: '::',
-																			_0: w,
-																			_1: {ctor: '[]'}
-																		}
+																		_0: w,
+																		_1: {ctor: '[]'}
 																	}
 																}
 															}
@@ -9604,69 +9722,29 @@ var _user$project$Data$levels = function () {
 											_0: w,
 											_1: {
 												ctor: '::',
-												_0: w,
+												_0: f,
 												_1: {
 													ctor: '::',
-													_0: w,
+													_0: t,
 													_1: {
 														ctor: '::',
 														_0: f,
 														_1: {
 															ctor: '::',
-															_0: w,
+															_0: t,
 															_1: {
 																ctor: '::',
-																_0: f,
+																_0: w,
 																_1: {
 																	ctor: '::',
-																	_0: w,
+																	_0: s,
 																	_1: {
 																		ctor: '::',
-																		_0: w,
+																		_0: f,
 																		_1: {
 																			ctor: '::',
-																			_0: f,
-																			_1: {
-																				ctor: '::',
-																				_0: w,
-																				_1: {
-																					ctor: '::',
-																					_0: v,
-																					_1: {
-																						ctor: '::',
-																						_0: v,
-																						_1: {
-																							ctor: '::',
-																							_0: v,
-																							_1: {
-																								ctor: '::',
-																								_0: w,
-																								_1: {
-																									ctor: '::',
-																									_0: w,
-																									_1: {
-																										ctor: '::',
-																										_0: w,
-																										_1: {
-																											ctor: '::',
-																											_0: w,
-																											_1: {
-																												ctor: '::',
-																												_0: w,
-																												_1: {
-																													ctor: '::',
-																													_0: w,
-																													_1: {ctor: '[]'}
-																												}
-																											}
-																										}
-																									}
-																								}
-																							}
-																						}
-																					}
-																				}
-																			}
+																			_0: w,
+																			_1: {ctor: '[]'}
 																		}
 																	}
 																}
@@ -9683,6 +9761,98 @@ var _user$project$Data$levels = function () {
 												_0: w,
 												_1: {
 													ctor: '::',
+													_0: w,
+													_1: {
+														ctor: '::',
+														_0: w,
+														_1: {
+															ctor: '::',
+															_0: w,
+															_1: {
+																ctor: '::',
+																_0: w,
+																_1: {
+																	ctor: '::',
+																	_0: w,
+																	_1: {
+																		ctor: '::',
+																		_0: w,
+																		_1: {
+																			ctor: '::',
+																			_0: w,
+																			_1: {
+																				ctor: '::',
+																				_0: w,
+																				_1: {ctor: '[]'}
+																			}
+																		}
+																	}
+																}
+															}
+														}
+													}
+												}
+											},
+											_1: {ctor: '[]'}
+										}
+									}
+								}
+							}
+						}
+					},
+					_1: {
+						ctor: '::',
+						_0: {
+							ctor: '::',
+							_0: {
+								ctor: '::',
+								_0: w,
+								_1: {
+									ctor: '::',
+									_0: w,
+									_1: {
+										ctor: '::',
+										_0: w,
+										_1: {
+											ctor: '::',
+											_0: w,
+											_1: {
+												ctor: '::',
+												_0: w,
+												_1: {
+													ctor: '::',
+													_0: w,
+													_1: {
+														ctor: '::',
+														_0: w,
+														_1: {
+															ctor: '::',
+															_0: w,
+															_1: {ctor: '[]'}
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							_1: {
+								ctor: '::',
+								_0: {
+									ctor: '::',
+									_0: w,
+									_1: {
+										ctor: '::',
+										_0: f,
+										_1: {
+											ctor: '::',
+											_0: f,
+											_1: {
+												ctor: '::',
+												_0: f,
+												_1: {
+													ctor: '::',
 													_0: f,
 													_1: {
 														ctor: '::',
@@ -9693,9 +9863,137 @@ var _user$project$Data$levels = function () {
 															_1: {
 																ctor: '::',
 																_0: w,
+																_1: {ctor: '[]'}
+															}
+														}
+													}
+												}
+											}
+										}
+									}
+								},
+								_1: {
+									ctor: '::',
+									_0: {
+										ctor: '::',
+										_0: w,
+										_1: {
+											ctor: '::',
+											_0: f,
+											_1: {
+												ctor: '::',
+												_0: t,
+												_1: {
+													ctor: '::',
+													_0: x,
+													_1: {
+														ctor: '::',
+														_0: x,
+														_1: {
+															ctor: '::',
+															_0: b,
+															_1: {
+																ctor: '::',
+																_0: s,
+																_1: {
+																	ctor: '::',
+																	_0: w,
+																	_1: {ctor: '[]'}
+																}
+															}
+														}
+													}
+												}
+											}
+										}
+									},
+									_1: {
+										ctor: '::',
+										_0: {
+											ctor: '::',
+											_0: w,
+											_1: {
+												ctor: '::',
+												_0: f,
+												_1: {
+													ctor: '::',
+													_0: f,
+													_1: {
+														ctor: '::',
+														_0: f,
+														_1: {
+															ctor: '::',
+															_0: f,
+															_1: {
+																ctor: '::',
+																_0: f,
 																_1: {
 																	ctor: '::',
 																	_0: f,
+																	_1: {
+																		ctor: '::',
+																		_0: w,
+																		_1: {ctor: '[]'}
+																	}
+																}
+															}
+														}
+													}
+												}
+											}
+										},
+										_1: {
+											ctor: '::',
+											_0: {
+												ctor: '::',
+												_0: w,
+												_1: {
+													ctor: '::',
+													_0: w,
+													_1: {
+														ctor: '::',
+														_0: w,
+														_1: {
+															ctor: '::',
+															_0: w,
+															_1: {
+																ctor: '::',
+																_0: w,
+																_1: {
+																	ctor: '::',
+																	_0: f,
+																	_1: {
+																		ctor: '::',
+																		_0: f,
+																		_1: {
+																			ctor: '::',
+																			_0: w,
+																			_1: {ctor: '[]'}
+																		}
+																	}
+																}
+															}
+														}
+													}
+												}
+											},
+											_1: {
+												ctor: '::',
+												_0: {
+													ctor: '::',
+													_0: v,
+													_1: {
+														ctor: '::',
+														_0: v,
+														_1: {
+															ctor: '::',
+															_0: v,
+															_1: {
+																ctor: '::',
+																_0: v,
+																_1: {
+																	ctor: '::',
+																	_0: w,
 																	_1: {
 																		ctor: '::',
 																		_0: w,
@@ -9704,49 +10002,157 @@ var _user$project$Data$levels = function () {
 																			_0: w,
 																			_1: {
 																				ctor: '::',
-																				_0: f,
-																				_1: {
-																					ctor: '::',
-																					_0: w,
-																					_1: {
-																						ctor: '::',
-																						_0: w,
-																						_1: {
-																							ctor: '::',
-																							_0: w,
-																							_1: {
-																								ctor: '::',
-																								_0: w,
-																								_1: {
-																									ctor: '::',
-																									_0: w,
-																									_1: {
-																										ctor: '::',
-																										_0: f,
-																										_1: {
-																											ctor: '::',
-																											_0: f,
-																											_1: {
-																												ctor: '::',
-																												_0: t,
-																												_1: {
-																													ctor: '::',
-																													_0: t,
-																													_1: {
-																														ctor: '::',
-																														_0: w,
-																														_1: {ctor: '[]'}
-																													}
-																												}
-																											}
-																										}
-																									}
-																								}
-																							}
-																						}
-																					}
-																				}
+																				_0: w,
+																				_1: {ctor: '[]'}
 																			}
+																		}
+																	}
+																}
+															}
+														}
+													}
+												},
+												_1: {ctor: '[]'}
+											}
+										}
+									}
+								}
+							}
+						},
+						_1: {
+							ctor: '::',
+							_0: {
+								ctor: '::',
+								_0: {
+									ctor: '::',
+									_0: v,
+									_1: {
+										ctor: '::',
+										_0: w,
+										_1: {
+											ctor: '::',
+											_0: w,
+											_1: {
+												ctor: '::',
+												_0: w,
+												_1: {
+													ctor: '::',
+													_0: w,
+													_1: {
+														ctor: '::',
+														_0: w,
+														_1: {
+															ctor: '::',
+															_0: w,
+															_1: {
+																ctor: '::',
+																_0: w,
+																_1: {ctor: '[]'}
+															}
+														}
+													}
+												}
+											}
+										}
+									}
+								},
+								_1: {
+									ctor: '::',
+									_0: {
+										ctor: '::',
+										_0: v,
+										_1: {
+											ctor: '::',
+											_0: w,
+											_1: {
+												ctor: '::',
+												_0: f,
+												_1: {
+													ctor: '::',
+													_0: f,
+													_1: {
+														ctor: '::',
+														_0: f,
+														_1: {
+															ctor: '::',
+															_0: f,
+															_1: {
+																ctor: '::',
+																_0: f,
+																_1: {
+																	ctor: '::',
+																	_0: w,
+																	_1: {ctor: '[]'}
+																}
+															}
+														}
+													}
+												}
+											}
+										}
+									},
+									_1: {
+										ctor: '::',
+										_0: {
+											ctor: '::',
+											_0: v,
+											_1: {
+												ctor: '::',
+												_0: w,
+												_1: {
+													ctor: '::',
+													_0: f,
+													_1: {
+														ctor: '::',
+														_0: t,
+														_1: {
+															ctor: '::',
+															_0: b,
+															_1: {
+																ctor: '::',
+																_0: t,
+																_1: {
+																	ctor: '::',
+																	_0: f,
+																	_1: {
+																		ctor: '::',
+																		_0: w,
+																		_1: {ctor: '[]'}
+																	}
+																}
+															}
+														}
+													}
+												}
+											}
+										},
+										_1: {
+											ctor: '::',
+											_0: {
+												ctor: '::',
+												_0: w,
+												_1: {
+													ctor: '::',
+													_0: w,
+													_1: {
+														ctor: '::',
+														_0: f,
+														_1: {
+															ctor: '::',
+															_0: b,
+															_1: {
+																ctor: '::',
+																_0: s,
+																_1: {
+																	ctor: '::',
+																	_0: b,
+																	_1: {
+																		ctor: '::',
+																		_0: f,
+																		_1: {
+																			ctor: '::',
+																			_0: w,
+																			_1: {ctor: '[]'}
 																		}
 																	}
 																}
@@ -9765,67 +10171,23 @@ var _user$project$Data$levels = function () {
 														_0: f,
 														_1: {
 															ctor: '::',
-															_0: b,
+															_0: f,
 															_1: {
 																ctor: '::',
-																_0: f,
+																_0: t,
 																_1: {
 																	ctor: '::',
-																	_0: f,
+																	_0: b,
 																	_1: {
 																		ctor: '::',
-																		_0: b,
+																		_0: t,
 																		_1: {
 																			ctor: '::',
 																			_0: f,
 																			_1: {
 																				ctor: '::',
-																				_0: f,
-																				_1: {
-																					ctor: '::',
-																					_0: f,
-																					_1: {
-																						ctor: '::',
-																						_0: f,
-																						_1: {
-																							ctor: '::',
-																							_0: f,
-																							_1: {
-																								ctor: '::',
-																								_0: s,
-																								_1: {
-																									ctor: '::',
-																									_0: f,
-																									_1: {
-																										ctor: '::',
-																										_0: f,
-																										_1: {
-																											ctor: '::',
-																											_0: f,
-																											_1: {
-																												ctor: '::',
-																												_0: f,
-																												_1: {
-																													ctor: '::',
-																													_0: t,
-																													_1: {
-																														ctor: '::',
-																														_0: t,
-																														_1: {
-																															ctor: '::',
-																															_0: w,
-																															_1: {ctor: '[]'}
-																														}
-																													}
-																												}
-																											}
-																										}
-																									}
-																								}
-																							}
-																						}
-																					}
-																				}
+																				_0: w,
+																				_1: {ctor: '[]'}
 																			}
 																		}
 																	}
@@ -9841,70 +10203,26 @@ var _user$project$Data$levels = function () {
 														_0: w,
 														_1: {
 															ctor: '::',
-															_0: w,
+															_0: f,
 															_1: {
 																ctor: '::',
-																_0: w,
+																_0: f,
 																_1: {
 																	ctor: '::',
-																	_0: w,
+																	_0: f,
 																	_1: {
 																		ctor: '::',
-																		_0: w,
+																		_0: f,
 																		_1: {
 																			ctor: '::',
 																			_0: f,
 																			_1: {
 																				ctor: '::',
-																				_0: w,
+																				_0: f,
 																				_1: {
 																					ctor: '::',
 																					_0: w,
-																					_1: {
-																						ctor: '::',
-																						_0: w,
-																						_1: {
-																							ctor: '::',
-																							_0: f,
-																							_1: {
-																								ctor: '::',
-																								_0: w,
-																								_1: {
-																									ctor: '::',
-																									_0: f,
-																									_1: {
-																										ctor: '::',
-																										_0: w,
-																										_1: {
-																											ctor: '::',
-																											_0: w,
-																											_1: {
-																												ctor: '::',
-																												_0: f,
-																												_1: {
-																													ctor: '::',
-																													_0: f,
-																													_1: {
-																														ctor: '::',
-																														_0: t,
-																														_1: {
-																															ctor: '::',
-																															_0: t,
-																															_1: {
-																																ctor: '::',
-																																_0: w,
-																																_1: {ctor: '[]'}
-																															}
-																														}
-																													}
-																												}
-																											}
-																										}
-																									}
-																								}
-																							}
-																						}
-																					}
+																					_1: {ctor: '[]'}
 																				}
 																			}
 																		}
@@ -9917,95 +10235,19 @@ var _user$project$Data$levels = function () {
 														ctor: '::',
 														_0: {
 															ctor: '::',
-															_0: v,
+															_0: w,
 															_1: {
 																ctor: '::',
-																_0: v,
+																_0: w,
 																_1: {
 																	ctor: '::',
-																	_0: v,
+																	_0: w,
 																	_1: {
 																		ctor: '::',
-																		_0: v,
+																		_0: w,
 																		_1: {
 																			ctor: '::',
 																			_0: w,
-																			_1: {
-																				ctor: '::',
-																				_0: f,
-																				_1: {
-																					ctor: '::',
-																					_0: f,
-																					_1: {
-																						ctor: '::',
-																						_0: f,
-																						_1: {
-																							ctor: '::',
-																							_0: f,
-																							_1: {
-																								ctor: '::',
-																								_0: f,
-																								_1: {
-																									ctor: '::',
-																									_0: w,
-																									_1: {
-																										ctor: '::',
-																										_0: w,
-																										_1: {
-																											ctor: '::',
-																											_0: w,
-																											_1: {
-																												ctor: '::',
-																												_0: w,
-																												_1: {
-																													ctor: '::',
-																													_0: w,
-																													_1: {
-																														ctor: '::',
-																														_0: w,
-																														_1: {
-																															ctor: '::',
-																															_0: w,
-																															_1: {
-																																ctor: '::',
-																																_0: w,
-																																_1: {
-																																	ctor: '::',
-																																	_0: w,
-																																	_1: {ctor: '[]'}
-																																}
-																															}
-																														}
-																													}
-																												}
-																											}
-																										}
-																									}
-																								}
-																							}
-																						}
-																					}
-																				}
-																			}
-																		}
-																	}
-																}
-															}
-														},
-														_1: {
-															ctor: '::',
-															_0: {
-																ctor: '::',
-																_0: v,
-																_1: {
-																	ctor: '::',
-																	_0: v,
-																	_1: {
-																		ctor: '::',
-																		_0: v,
-																		_1: {
-																			ctor: '::',
-																			_0: v,
 																			_1: {
 																				ctor: '::',
 																				_0: w,
@@ -10015,43 +10257,27 @@ var _user$project$Data$levels = function () {
 																					_1: {
 																						ctor: '::',
 																						_0: w,
-																						_1: {
-																							ctor: '::',
-																							_0: w,
-																							_1: {
-																								ctor: '::',
-																								_0: w,
-																								_1: {
-																									ctor: '::',
-																									_0: w,
-																									_1: {
-																										ctor: '::',
-																										_0: w,
-																										_1: {ctor: '[]'}
-																									}
-																								}
-																							}
-																						}
+																						_1: {ctor: '[]'}
 																					}
 																				}
 																			}
 																		}
 																	}
 																}
-															},
-															_1: {ctor: '[]'}
-														}
+															}
+														},
+														_1: {ctor: '[]'}
 													}
 												}
 											}
 										}
 									}
 								}
-							}
+							},
+							_1: {ctor: '[]'}
 						}
 					}
-				},
-				_1: {ctor: '[]'}
+				}
 			}
 		});
 }();
@@ -10080,6 +10306,7 @@ var _user$project$Game$move = F2(
 	});
 var _user$project$Game$moveBox = F3(
 	function (direction, position, level) {
+		var levelStatistic = level.statistic;
 		var levelMap = level.map;
 		var mapBoxes = A2(
 			_elm_lang$core$List$map,
@@ -10090,6 +10317,9 @@ var _user$project$Game$moveBox = F3(
 		return _elm_lang$core$Native_Utils.update(
 			level,
 			{
+				statistic: _elm_lang$core$Native_Utils.update(
+					levelStatistic,
+					{pushes: levelStatistic.pushes + 1}),
 				map: _elm_lang$core$Native_Utils.update(
 					levelMap,
 					{boxes: mapBoxes})
@@ -10097,10 +10327,14 @@ var _user$project$Game$moveBox = F3(
 	});
 var _user$project$Game$movePlayer = F3(
 	function (direction, position, level) {
+		var levelStatistic = level.statistic;
 		var gamePlayer = level.player;
 		return _elm_lang$core$Native_Utils.update(
 			level,
 			{
+				statistic: _elm_lang$core$Native_Utils.update(
+					levelStatistic,
+					{moves: levelStatistic.moves + 1}),
 				player: _elm_lang$core$Native_Utils.update(
 					gamePlayer,
 					{position: position, direction: direction})
@@ -10167,33 +10401,63 @@ var _user$project$Style$layer = function (zIndex) {
 			}
 		});
 };
-var _user$project$Style$title = _elm_lang$html$Html_Attributes$style(
+var _user$project$Style$statistic = _elm_lang$html$Html_Attributes$style(
 	{
 		ctor: '::',
-		_0: {ctor: '_Tuple2', _0: 'position', _1: 'absolute'},
+		_0: {ctor: '_Tuple2', _0: 'position', _1: 'relative'},
 		_1: {
 			ctor: '::',
-			_0: {ctor: '_Tuple2', _0: 'top', _1: '120px'},
+			_0: {ctor: '_Tuple2', _0: 'color', _1: '#bac4c5'},
 			_1: {
 				ctor: '::',
-				_0: {ctor: '_Tuple2', _0: 'color', _1: '#bac4c5'},
+				_0: {ctor: '_Tuple2', _0: 'font-family', _1: '\'Orbitron\', sans-serif'},
 				_1: {
 					ctor: '::',
-					_0: {ctor: '_Tuple2', _0: 'font-family', _1: '\'Orbitron\', sans-serif'},
+					_0: {ctor: '_Tuple2', _0: 'font-size', _1: '16px'},
 					_1: {
 						ctor: '::',
-						_0: {ctor: '_Tuple2', _0: 'font-size', _1: '40px'},
+						_0: {ctor: '_Tuple2', _0: 'line-heigth', _1: '16px'},
 						_1: {
 							ctor: '::',
-							_0: {ctor: '_Tuple2', _0: 'line-heigth', _1: '40px'},
+							_0: {ctor: '_Tuple2', _0: 'text-align', _1: 'center'},
 							_1: {
 								ctor: '::',
-								_0: {ctor: '_Tuple2', _0: 'text-align', _1: 'center'},
+								_0: {ctor: '_Tuple2', _0: 'margin-bottom', _1: '40px'},
 								_1: {
 									ctor: '::',
 									_0: {ctor: '_Tuple2', _0: 'width', _1: '100%'},
 									_1: {ctor: '[]'}
 								}
+							}
+						}
+					}
+				}
+			}
+		}
+	});
+var _user$project$Style$title = _elm_lang$html$Html_Attributes$style(
+	{
+		ctor: '::',
+		_0: {ctor: '_Tuple2', _0: 'position', _1: 'relative'},
+		_1: {
+			ctor: '::',
+			_0: {ctor: '_Tuple2', _0: 'color', _1: '#efefef'},
+			_1: {
+				ctor: '::',
+				_0: {ctor: '_Tuple2', _0: 'font-family', _1: '\'Orbitron\', sans-serif'},
+				_1: {
+					ctor: '::',
+					_0: {ctor: '_Tuple2', _0: 'font-size', _1: '40px'},
+					_1: {
+						ctor: '::',
+						_0: {ctor: '_Tuple2', _0: 'line-heigth', _1: '40px'},
+						_1: {
+							ctor: '::',
+							_0: {ctor: '_Tuple2', _0: 'text-align', _1: 'center'},
+							_1: {
+								ctor: '::',
+								_0: {ctor: '_Tuple2', _0: 'width', _1: '100%'},
+								_1: {ctor: '[]'}
 							}
 						}
 					}
@@ -10239,10 +10503,10 @@ var _user$project$Style$menu = _elm_lang$html$Html_Attributes$style(
 			}
 		}
 	});
-var _user$project$Style$layout = _elm_lang$html$Html_Attributes$style(
+var _user$project$Style$background = _elm_lang$html$Html_Attributes$style(
 	{
 		ctor: '::',
-		_0: {ctor: '_Tuple2', _0: 'position', _1: 'absolute'},
+		_0: {ctor: '_Tuple2', _0: 'position', _1: 'fixed'},
 		_1: {
 			ctor: '::',
 			_0: {ctor: '_Tuple2', _0: 'background-color', _1: '#242c2d'},
@@ -10251,11 +10515,25 @@ var _user$project$Style$layout = _elm_lang$html$Html_Attributes$style(
 				_0: {ctor: '_Tuple2', _0: 'width', _1: '100%'},
 				_1: {
 					ctor: '::',
-					_0: {ctor: '_Tuple2', _0: 'height', _1: '100%'},
-					_1: {ctor: '[]'}
+					_0: {ctor: '_Tuple2', _0: 'top', _1: '0'},
+					_1: {
+						ctor: '::',
+						_0: {ctor: '_Tuple2', _0: 'bottom', _1: '0'},
+						_1: {
+							ctor: '::',
+							_0: {ctor: '_Tuple2', _0: 'z-index', _1: '-1'},
+							_1: {ctor: '[]'}
+						}
+					}
 				}
 			}
 		}
+	});
+var _user$project$Style$layout = _elm_lang$html$Html_Attributes$style(
+	{
+		ctor: '::',
+		_0: {ctor: '_Tuple2', _0: 'position', _1: 'relative'},
+		_1: {ctor: '[]'}
 	});
 var _user$project$Style$toRotateDegree = function (direction) {
 	var _p0 = direction;
@@ -10306,7 +10584,7 @@ var _user$project$Style$grid = F2(
 		return _elm_lang$html$Html_Attributes$style(
 			{
 				ctor: '::',
-				_0: {ctor: '_Tuple2', _0: 'position', _1: 'absolute'},
+				_0: {ctor: '_Tuple2', _0: 'position', _1: 'relative'},
 				_1: {
 					ctor: '::',
 					_0: {
@@ -10323,34 +10601,8 @@ var _user$project$Style$grid = F2(
 						},
 						_1: {
 							ctor: '::',
-							_0: {ctor: '_Tuple2', _0: 'left', _1: '50%'},
-							_1: {
-								ctor: '::',
-								_0: {ctor: '_Tuple2', _0: 'top', _1: '50%'},
-								_1: {
-									ctor: '::',
-									_0: {
-										ctor: '_Tuple2',
-										_0: 'margin-left',
-										_1: A2(
-											_elm_lang$core$Basics_ops['++'],
-											'-',
-											_user$project$Style$toPixels(((width * _user$project$Style$squareSize) / 2) | 0))
-									},
-									_1: {
-										ctor: '::',
-										_0: {
-											ctor: '_Tuple2',
-											_0: 'margin-top',
-											_1: A2(
-												_elm_lang$core$Basics_ops['++'],
-												'-',
-												_user$project$Style$toPixels(((height * _user$project$Style$squareSize) / 2) | 0))
-										},
-										_1: {ctor: '[]'}
-									}
-								}
-							}
+							_0: {ctor: '_Tuple2', _0: 'margin', _1: '0 auto'},
+							_1: {ctor: '[]'}
 						}
 					}
 				}
@@ -10603,6 +10855,33 @@ var _user$project$Render$square = F2(
 					{ctor: '[]'});
 		}
 	});
+var _user$project$Render$statistic = function (statistic) {
+	return A2(
+		_elm_lang$html$Html$div,
+		{
+			ctor: '::',
+			_0: _user$project$Style$statistic,
+			_1: {ctor: '[]'}
+		},
+		{
+			ctor: '::',
+			_0: _elm_lang$html$Html$text(
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					'moves ',
+					A2(
+						_elm_lang$core$Basics_ops['++'],
+						_elm_lang$core$Basics$toString(statistic.moves),
+						A2(
+							_elm_lang$core$Basics_ops['++'],
+							', ',
+							A2(
+								_elm_lang$core$Basics_ops['++'],
+								'pushes ',
+								_elm_lang$core$Basics$toString(statistic.pushes)))))),
+			_1: {ctor: '[]'}
+		});
+};
 var _user$project$Render$player = function (player) {
 	return A2(
 		_elm_lang$html$Html$div,
@@ -10662,6 +10941,14 @@ var _user$project$Render$menu = function (message) {
 			_1: {ctor: '[]'}
 		});
 };
+var _user$project$Render$background = A2(
+	_elm_lang$html$Html$div,
+	{
+		ctor: '::',
+		_0: _user$project$Style$background,
+		_1: {ctor: '[]'}
+	},
+	{ctor: '[]'});
 var _user$project$Render$layout = function (children) {
 	return A2(
 		_elm_lang$html$Html$div,
@@ -10697,7 +10984,11 @@ var _user$project$Screen_Intro$render = function (model) {
 		{
 			ctor: '::',
 			_0: _user$project$Render$menu('Press spacebar to start the game'),
-			_1: {ctor: '[]'}
+			_1: {
+				ctor: '::',
+				_0: _user$project$Render$background,
+				_1: {ctor: '[]'}
+			}
 		});
 };
 
@@ -10779,31 +11070,39 @@ var _user$project$Screen_Level$render = function (model) {
 						_elm_lang$core$Basics$toString(_p6.number + 1))),
 				_1: {
 					ctor: '::',
-					_0: A2(
-						_user$project$Render$grid,
-						_p6.size,
-						{
-							ctor: '::',
-							_0: _user$project$Render$player(_p6.player),
-							_1: {
+					_0: _user$project$Render$statistic(_p6.statistic),
+					_1: {
+						ctor: '::',
+						_0: A2(
+							_user$project$Render$grid,
+							_p6.size,
+							{
 								ctor: '::',
-								_0: A2(_user$project$Render$layer, _user$project$Type$Floor, _p6.map.floor),
+								_0: _user$project$Render$player(_p6.player),
 								_1: {
 									ctor: '::',
-									_0: A2(_user$project$Render$layer, _user$project$Type$Wall, _p6.map.wall),
+									_0: A2(_user$project$Render$layer, _user$project$Type$Floor, _p6.map.floor),
 									_1: {
 										ctor: '::',
-										_0: A2(_user$project$Render$layer, _user$project$Type$Box, _p6.map.boxes),
+										_0: A2(_user$project$Render$layer, _user$project$Type$Wall, _p6.map.wall),
 										_1: {
 											ctor: '::',
-											_0: A2(_user$project$Render$layer, _user$project$Type$Target, _p6.map.target),
-											_1: {ctor: '[]'}
+											_0: A2(_user$project$Render$layer, _user$project$Type$Box, _p6.map.boxes),
+											_1: {
+												ctor: '::',
+												_0: A2(_user$project$Render$layer, _user$project$Type$Target, _p6.map.target),
+												_1: {ctor: '[]'}
+											}
 										}
 									}
 								}
-							}
-						}),
-					_1: {ctor: '[]'}
+							}),
+						_1: {
+							ctor: '::',
+							_0: _user$project$Render$background,
+							_1: {ctor: '[]'}
+						}
+					}
 				}
 			});
 	} else {
@@ -10843,6 +11142,7 @@ var _user$project$Screen_Complete$update = F2(
 var _user$project$Screen_Complete$render = function (model) {
 	var _p3 = model.level;
 	if (_p3.ctor === 'Just') {
+		var _p4 = _p3._0;
 		return _user$project$Render$layout(
 			{
 				ctor: '::',
@@ -10852,12 +11152,20 @@ var _user$project$Screen_Complete$render = function (model) {
 						'Level ',
 						A2(
 							_elm_lang$core$Basics_ops['++'],
-							_elm_lang$core$Basics$toString(_p3._0.number + 1),
+							_elm_lang$core$Basics$toString(_p4.number + 1),
 							' complete'))),
 				_1: {
 					ctor: '::',
-					_0: _user$project$Render$menu('Press spacebar to play next level'),
-					_1: {ctor: '[]'}
+					_0: _user$project$Render$statistic(_p4.statistic),
+					_1: {
+						ctor: '::',
+						_0: _user$project$Render$menu('Press spacebar to play next level'),
+						_1: {
+							ctor: '::',
+							_0: _user$project$Render$background,
+							_1: {ctor: '[]'}
+						}
+					}
 				}
 			});
 	} else {
@@ -10875,7 +11183,11 @@ var _user$project$Screen_Victory$render = function (model) {
 		{
 			ctor: '::',
 			_0: _user$project$Render$title('You win!'),
-			_1: {ctor: '[]'}
+			_1: {
+				ctor: '::',
+				_0: _user$project$Render$background,
+				_1: {ctor: '[]'}
+			}
 		});
 };
 
