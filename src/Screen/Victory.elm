@@ -7,6 +7,7 @@ import Type exposing (..)
 render: Model -> Html Msg
 render model =
   Render.layout [
-    Render.title "You win!",
+    Render.menu "Congratulations! You win the game!",
+    Render.shareVictory "Share your victory in Twitter",
     Render.background
   ]

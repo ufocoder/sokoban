@@ -6,6 +6,8 @@ import Http exposing (encodeUri)
 import Style
 import Type exposing (..)
 
+url: String
+url = "https://ufocoder.github.io/sokoban/dist/index.html"
 
 layout: List (Html msg) -> Html msg
 layout children =
@@ -27,30 +29,44 @@ title message =
     Html.div [Style.title] [text message]
 
 
-share:  Level -> String -> Html msg
-share level message = 
+shareVictory: String -> Html msg
+shareVictory linkText =
+  let 
+    tweetText = "I win the sokoban game, URL: " ++ url
+  in
+    Html.div [Style.share] [
+      shareTwitterLink linkText tweetText
+    ]
+
+
+shareLevel:  Level -> String -> Html msg
+shareLevel level linkText = 
   let
     baseText = (
-      "passed level #" ++ (toString level.number) ++ ", with " ++ 
+      "passed level #" ++ (toString (level.number + 1)) ++ ", with " ++ 
       (toString level.statistic.moves) ++ " moves and " ++
       (toString level.statistic.pushes) ++ " pushes"
     )
     shareText = "You " ++ baseText
-    tweetText = "I " ++ baseText
+    tweetText = "I " ++ baseText ++ ", URL: " ++ url
   in
     Html.div [Style.share] [
       Html.div [] [text shareText],
-      Html.a [
-        target "_blank",
-        href ("https://twitter.com/intent/tweet?text=" ++ (encodeUri tweetText)),
-        style [
-          ("color", "#FFFFFF")
-        ]
-      ] [
-        text message
-      ]
+      shareTwitterLink linkText tweetText
     ]
 
+
+shareTwitterLink: String -> String -> Html msg
+shareTwitterLink linkText tweetText =
+  Html.a [
+    target "_blank",
+    href ("https://twitter.com/intent/tweet?text=" ++ (encodeUri tweetText)),
+    style [
+      ("color", "#FFFFFF")
+    ] 
+  ] [
+    text linkText
+  ]
 
 reset: String -> Html msg
 reset message =

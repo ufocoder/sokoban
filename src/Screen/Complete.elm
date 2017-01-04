@@ -14,7 +14,7 @@ render model =
     Just level ->
       Render.layout [
         Render.menu "Press spacebar to play next level",
-        Render.share level "Share your results in Twitter",
+        Render.shareLevel level "Share your results in Twitter",
         Render.background
       ]
 
