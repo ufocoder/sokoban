@@ -22,9 +22,11 @@ type alias Position = {
 
 type Class
   = Box
+  | BoxOnTarget
   | Floor
   | Target
   | Start
+  | StartOnTarget
   | Wall
   | Void
 
