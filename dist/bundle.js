@@ -10893,6 +10893,40 @@ var _ufocoder$sokoban$Style$share = _elm_lang$html$Html_Attributes$style(
 			}
 		}
 	});
+var _ufocoder$sokoban$Style$subLogo = _elm_lang$html$Html_Attributes$style(
+	{
+		ctor: '::',
+		_0: {ctor: '_Tuple2', _0: 'position', _1: 'absolute'},
+		_1: {
+			ctor: '::',
+			_0: {ctor: '_Tuple2', _0: 'top', _1: '280px'},
+			_1: {
+				ctor: '::',
+				_0: {ctor: '_Tuple2', _0: 'color', _1: '#FFFFFF'},
+				_1: {
+					ctor: '::',
+					_0: {ctor: '_Tuple2', _0: 'font-family', _1: '\'Orbitron\', sans-serif'},
+					_1: {
+						ctor: '::',
+						_0: {ctor: '_Tuple2', _0: 'font-size', _1: '20px'},
+						_1: {
+							ctor: '::',
+							_0: {ctor: '_Tuple2', _0: 'line-height', _1: '50px'},
+							_1: {
+								ctor: '::',
+								_0: {ctor: '_Tuple2', _0: 'text-align', _1: 'center'},
+								_1: {
+									ctor: '::',
+									_0: {ctor: '_Tuple2', _0: 'width', _1: '100%'},
+									_1: {ctor: '[]'}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	});
 var _ufocoder$sokoban$Style$logo = _elm_lang$html$Html_Attributes$style(
 	{
 		ctor: '::',
@@ -10933,7 +10967,7 @@ var _ufocoder$sokoban$Style$menu = _elm_lang$html$Html_Attributes$style(
 		_0: {ctor: '_Tuple2', _0: 'position', _1: 'absolute'},
 		_1: {
 			ctor: '::',
-			_0: {ctor: '_Tuple2', _0: 'top', _1: '280px'},
+			_0: {ctor: '_Tuple2', _0: 'top', _1: '215px'},
 			_1: {
 				ctor: '::',
 				_0: {ctor: '_Tuple2', _0: 'color', _1: '#FFFFFF'},
@@ -10942,7 +10976,7 @@ var _ufocoder$sokoban$Style$menu = _elm_lang$html$Html_Attributes$style(
 					_0: {ctor: '_Tuple2', _0: 'font-family', _1: '\'Orbitron\', sans-serif'},
 					_1: {
 						ctor: '::',
-						_0: {ctor: '_Tuple2', _0: 'font-size', _1: '20px'},
+						_0: {ctor: '_Tuple2', _0: 'font-size', _1: '25px'},
 						_1: {
 							ctor: '::',
 							_0: {ctor: '_Tuple2', _0: 'line-height', _1: '50px'},
@@ -11445,6 +11479,20 @@ var _ufocoder$sokoban$Render$menu = function (message) {
 			_1: {ctor: '[]'}
 		});
 };
+var _ufocoder$sokoban$Render$subLogo = function (message) {
+	return A2(
+		_elm_lang$html$Html$div,
+		{
+			ctor: '::',
+			_0: _ufocoder$sokoban$Style$subLogo,
+			_1: {ctor: '[]'}
+		},
+		{
+			ctor: '::',
+			_0: _elm_lang$html$Html$text(message),
+			_1: {ctor: '[]'}
+		});
+};
 var _ufocoder$sokoban$Render$logo = function (message) {
 	return A2(
 		_elm_lang$html$Html$div,
@@ -11573,7 +11621,7 @@ var _ufocoder$sokoban$Screen_Intro$render = function (model) {
 			_0: _ufocoder$sokoban$Render$logo('倉庫番'),
 			_1: {
 				ctor: '::',
-				_0: _ufocoder$sokoban$Render$menu('Press spacebar to start the game'),
+				_0: _ufocoder$sokoban$Render$subLogo('Press spacebar to start the game'),
 				_1: {
 					ctor: '::',
 					_0: _ufocoder$sokoban$Render$background,
