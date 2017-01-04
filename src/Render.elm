@@ -19,6 +19,11 @@ background =
   Html.div [Style.background] []
 
 
+logo: String -> Html msg
+logo message =
+  Html.div [Style.logo] [text message]
+
+
 menu: String -> Html msg
 menu message =
   Html.div [Style.menu] [text message]

@@ -9,6 +9,7 @@ import Type exposing (..)
 render: Model -> Html Msg
 render model =
   Render.layout [
+    Render.logo "倉庫番",
     Render.menu "Press spacebar to start the game",
     Render.background
   ]
