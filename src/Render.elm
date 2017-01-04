@@ -38,6 +38,15 @@ player player =
   Html.div [Style.player player.position player.direction] []
 
 
+statistic: Statistic -> Html msd
+statistic statistic = 
+  Html.div [Style.statistic] [
+    text (
+      "moves " ++ (toString statistic.moves) ++  ", " ++
+      "pushes " ++ (toString statistic.pushes)
+    )
+  ]
+
 square: Class -> Position -> Html msg
 square class position =
   case class of

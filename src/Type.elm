@@ -53,11 +53,17 @@ type alias Map  = {
   floor: Layer
 }
 
+type alias Statistic = {
+  moves: Int,
+  pushes: Int
+}
+
 type alias Level = {
   number: Int,
   size: Size,
   map: Map,
-  player: Player
+  player: Player,
+  statistic: Statistic
 }
 
 type alias LevelRow = List Class

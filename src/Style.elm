@@ -51,8 +51,8 @@ menu = style
 title: Attribute msg
 title = style
   [
-    ("position", "absolute"),
-    ("top", "120px"),
+    ("position", "relative"),
+    ("top", "0px"),
     ("color", "#bac4c5"),
     ("font-family", "'Orbitron', sans-serif"),
     ("font-size", "40px"),
@@ -61,16 +61,26 @@ title = style
     ("width", "100%")
   ]
 
+statistic: Attribute msg
+statistic =
+  style [
+    ("position", "relative"),
+    ("top", "0px"),
+    ("color", "#bac4c5"),
+    ("font-family", "'Orbitron', sans-serif"),
+    ("font-size", "16px"),
+    ("line-heigth", "16px"),
+    ("text-align", "center"),
+    ("width", "100%")
+  ]
+
 grid: Int -> Int -> Attribute msg
 grid height width = style
   [
-    ("position", "absolute"),
+    ("position", "relative"),
     ("height", toPixels (height * squareSize)),
     ("width", toPixels (width * squareSize)),
-    ("left", "50%"),
-    ("top", "50%"),
-    ("margin-left", "-" ++ toPixels (width * squareSize // 2)),
-    ("margin-top", "-" ++ toPixels (height * squareSize // 2))
+    ("margin", "auto 0")
   ]
 
 
@@ -98,6 +108,7 @@ player position direction =
         ("transform", toRotateDegree direction)
       ]
   )
+
 
 baseSquare: Position -> List (String, String)
 baseSquare position =

@@ -48,19 +48,25 @@ movePlayer: Direction -> Position -> Level -> Level
 movePlayer direction position level = 
   let 
     gamePlayer = level.player
+    levelStatistic = level.statistic
   in
     {
-      level | player = {
-        gamePlayer | 
-          position = position,
-          direction = direction
-      }
+      level | 
+        statistic = {
+          levelStatistic | moves = levelStatistic.moves + 1
+        },
+        player = {
+          gamePlayer | 
+            position = position,
+            direction = direction
+        }
     }
 
 moveBox: Direction -> Position -> Level -> Level
 moveBox direction position level =
   let 
     levelMap = level.map
+    levelStatistic = level.statistic
     mapBoxes = levelMap.boxes
       |> List.map (
         \square -> 
@@ -71,9 +77,13 @@ moveBox direction position level =
         )
   in
     {
-      level | map = {
-        levelMap | boxes = mapBoxes
-      }
+      level | 
+        statistic = {
+          levelStatistic | pushes = levelStatistic.pushes + 1
+        },
+        map = {
+          levelMap | boxes = mapBoxes
+        }
     }
 
 move: Position -> Direction -> Position

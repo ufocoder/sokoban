@@ -13,6 +13,7 @@ render model =
     Just level ->
       Render.layout [
         Render.title ("Level " ++ (toString (level.number + 1))),
+        Render.statistic level.statistic,
         Render.grid level.size [
           Render.player level.player,
           Render.layer Floor level.map.floor,

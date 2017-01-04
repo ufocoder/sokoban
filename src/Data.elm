@@ -69,6 +69,10 @@ generateLevel levelNumber levelData =
       player = {
         direction = Left,
         position = extractPlayerPosition positionsTuples
+      },
+      statistic = {
+        moves = 0,
+        pushes = 0
       }
     }
 
