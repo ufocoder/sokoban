@@ -24,6 +24,11 @@ logo message =
   Html.div [Style.logo] [text message]
 
 
+subLogo: String -> Html msg
+subLogo message =
+  Html.div [Style.subLogo] [text message]
+
+
 menu: String -> Html msg
 menu message =
   Html.div [Style.menu] [text message]

@@ -46,10 +46,10 @@ menu: Attribute msg
 menu = style
   [
     ("position", "absolute"),
-    ("top", "280px"),
+    ("top", "215px"),
     ("color", "#FFFFFF"),
     ("font-family", "'Orbitron', sans-serif"),
-    ("font-size", "20px"),
+    ("font-size", "25px"),
     ("line-height", "50px"),
     ("text-align", "center"),
     ("width", "100%")
@@ -63,6 +63,19 @@ logo = style
     ("color", "#FFFFFF"),
     ("font-family", "'Orbitron', sans-serif"),
     ("font-size", "40px"),
+    ("line-height", "50px"),
+    ("text-align", "center"),
+    ("width", "100%")
+  ]
+
+subLogo: Attribute msg
+subLogo = style
+  [
+    ("position", "absolute"),
+    ("top", "280px"),
+    ("color", "#FFFFFF"),
+    ("font-family", "'Orbitron', sans-serif"),
+    ("font-size", "20px"),
     ("line-height", "50px"),
     ("text-align", "center"),
     ("width", "100%")
